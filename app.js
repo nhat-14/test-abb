@@ -295,18 +295,20 @@ ${category}
     const repoUrl = 'https://github.com/MitsubishiElectric-InnerSource/me-ryakushou';
     const issueUrl = `${repoUrl}/issues/new?labels=new-abbreviation&title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
     
-    // Show success message with link
+    // Show button to create GitHub Issue
     const csvLine = [abbr, meaningJa, meaningEn, category]
         .map(field => `"${field.replace(/"/g, '""')}"`)
         .join(',');
     
     document.getElementById('csvOutput').innerHTML = `
-        <strong>GitHub Issueを作成して自動保存：</strong><br>
-        <a href="${issueUrl}" target="_blank" style="color: #dc2626; font-weight: bold;">
-            → GitHub Issueを作成 (自動的にCSVに追加されます)
-        </a><br><br>
-        または手動でCSV形式をコピー：<br>
-        <code style="display: block; margin-top: 5px;">${csvLine}</code>
+        <p style="margin-bottom: 15px;">✅ 略語情報が準備できました！</p>
+        <a href="${issueUrl}" target="_blank" class="btn-primary" style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
+            📝 GitHub Issueを作成して自動保存
+        </a>
+        <details style="margin-top: 15px;">
+            <summary style="cursor: pointer; color: #64748b;">手動でCSV形式をコピー</summary>
+            <code style="display: block; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; word-break: break-all;">${csvLine}</code>
+        </details>
     `;
     document.getElementById('saveSuccess').style.display = 'block';
 }
