@@ -253,82 +253,7 @@ function openModal() {
 function closeModal() {
     modal.style.display = 'none';
     editingIndex = -1;
-}
-
-// Save directly to GitHub via API
-async function saveToGitHub(abbr, meaningJa, meaningEn, category) {
-    if (!githubToken) {
-        // Prompt for token if not set
-        const token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new でトークンを作成\n2. "repo" スコープを選択\n3. トークンをコピーしてここに貼り付け');
-        if (!token) return { success: false, error: 'トークンが入力されませんでした' };
-        githubToken = token;
-        localStorage.setItem('github_token', token);
-    }
-    
-    const repo = 'MitsubishiElectric-InnerSource/me-ryakushou';
-    const filePath = 'data/abbreviations.csv';
-    const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`;
-    
-    try {
-        console.log('Getting file from GitHub...');
-        // Get current file content and SHA
-        const getResponse = await fetch(apiUrl, {
-            headers: {
-                'Authorization': `token ${githubToken}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
-        });
-        
-        if (!getResponse.ok) {
-            const errorText = await getResponse.text();
-            console.error('Get file error:', errorText);
-            throw new Error(`ファイルの取得に失敗しました (${getResponse.status})`);
-        }
-        
-        const fileData = await getResponse.json();
-        const currentContent = atob(fileData.content);
-        
-        console.log('Current CSV length:', currentContent.length);
-        
-        // Add new line to CSV
-        const csvLine = [abbr, meaningJa, meaningEn, category]
-            .map(field => `"${field.replace(/"/g, '""')}"`)
-            .join(',');
-        const newContent = currentContent.trim() + '\n' + csvLine + '\n';
-        
-        console.log('New CSV line:', csvLine);
-        console.log('Updating file...');
-        
-        // Update file
-        const updateResponse = await fetch(apiUrl, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${githubToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: `Add abbreviation: ${abbr}`,
-                content: btoa(unescape(encodeURIComponent(newContent))),
-                sha: fileData.sha
-            })
-        });
-        
-        if (!updateResponse.ok) {
-            const errorText = await updateResponse.text();
-            console.error('Update file error:', errorText);
-            throw new Error(`ファイルの更新に失敗しました (${updateResponse.status})`);
-        }
-        
-        console.log('Successfully saved!');
-        return { success: true };
-    } catch (error) {
-        console.error('GitHub API Error:', error);
-        // Clear invalid token
-        githubToken = '';
-        localStorage.removeItem('github_token');
-        return { success: false, error: error.message };
-    }
+    document.getElementById('saveSuccess').style.display = 'none';
 }
 
 function saveFormData() {
@@ -350,40 +275,36 @@ function saveFormData() {
         return;
     }
     
-    // Show loading
-    const saveBtn = document.getElementById('saveBtn');
-    const originalText = saveBtn.textContent;
-    saveBtn.disabled = true;
-    saveBtn.textContent = '保存中...';
+    // Create CSV line
+    const csvLine = [abbr, meaningJa, meaningEn, category]
+        .map(field => `"${field.replace(/"/g, '""')}"`)
+        .join(',');
     
-    // Save to GitHub
-    saveToGitHub(abbr, meaningJa, meaningEn, category).then(result => {
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-        
-        if (result.success) {
-            document.getElementById('csvOutput').innerHTML = `
-                <p style="color: #10b981; font-weight: bold; font-size: 1.2em;">✅ 保存が完了しました！</p>
-                <p style="margin: 10px 0;">データベースに追加されました。</p>
-                <button onclick="location.reload()" class="btn-primary" style="margin-top: 10px; padding: 10px 20px; cursor: pointer;">
-                    🔄 ページを更新して確認
-                </button>
-            `;
-            document.getElementById('saveSuccess').style.display = 'block';
-            
-            // Auto close modal after showing success
-            setTimeout(() => {
-                document.getElementById('saveSuccess').style.display = 'none';
-                closeModal();
-            }, 5000);
-        } else {
-            document.getElementById('csvOutput').innerHTML = `
-                <p style="color: #dc2626; font-weight: bold;">❌ 保存に失敗しました</p>
-                <p style="margin: 10px 0;">${result.error}</p>
-                <p style="font-size: 0.9em; color: #64748b;">トークンを再設定するには、ページを更新してもう一度試してください。</p>
-            `;
-            document.getElementById('saveSuccess').style.display = 'block';
-        }
+    // Copy to clipboard
+    navigator.clipboard.writeText(csvLine).then(() => {
+        document.getElementById('csvOutput').innerHTML = `
+            <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ CSV形式でコピーしました！</p>
+            <p style="margin-bottom: 15px;">以下のリンクからGitHubでCSVファイルを編集してください：</p>
+            <a href="https://github.com/MitsubishiElectric-InnerSource/me-ryakushou/edit/main/data/abbreviations.csv" 
+               target="_blank" 
+               class="btn-primary" 
+               style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
+                📝 GitHubでCSVを編集
+            </a>
+            <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
+                1. リンクをクリック<br>
+                2. ファイルの最後にペースト<br>
+                3. "Commit changes"をクリック
+            </p>
+            <details style="margin-top: 15px;">
+                <summary style="cursor: pointer; color: #64748b;">コピーした内容を確認</summary>
+                <code style="display: block; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; word-break: break-all;">${csvLine}</code>
+            </details>
+        `;
+        document.getElementById('saveSuccess').style.display = 'block';
+    }).catch(err => {
+        console.error('Copy failed:', err);
+        alert('クリップボードへのコピーに失敗しました');
     });
 }
 
