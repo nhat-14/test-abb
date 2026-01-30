@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>略語辞典 - Abbreviation Dictionary</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>略語辞典 (Abbreviation Dictionary)</h1>
+            <p class="subtitle">社内略語検索システム</p>
+        </header>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="略語または意味を検索... (例: API, HTTP, など)"
+                    autocomplete="off"
+                >
+                <button id="clearBtn" class="clear-btn" title="クリア">✕</button>
+            </div>
+            <div class="stats">
+                <span id="totalCount">読込中...</span>
+                <span id="filteredCount"></span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="addNewBtn" class="btn-primary">➕ 新しい略語を追加</button>
+        </div>
+
+        <div id="loading" class="loading">データを読み込んでいます...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div class="table-container">
+            <table id="abbreviationsTable">
+                <thead>
+                    <tr>
+                        <th>略語</th>
+                        <th>意味 (日本語)</th>
+                        <th>English Meaning</th>
+                        <th>カテゴリ</th>
+                        <th>編集</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="noResults" class="no-results" style="display: none;">
+            検索結果が見つかりませんでした
+        </div>
+
+        <footer>
+            <p>💡 新しい略語を追加するには、<a href="CONTRIBUTING.md" target="_blank">CONTRIBUTING.md</a>を参照してください</p>
+            <p>または <a href="https://github.com/YOUR_ORG/me-ryakushou/issues/new" target="_blank">GitHub Issue</a> を作成してください</p>
+        </footer>
+    </div>
+
+    <!-- Modal for adding new abbreviation -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>新しい略語を追加</h2>
+            <p class="modal-info">この情報はCSV形式でコピーできます。GitHub Issues または Pull Request で提出してください。</p>
+            
+            <form id="addForm">
+                <div class="form-group">
+                    <label for="abbr">略語 *</label>
+                    <input type="text" id="abbr" required placeholder="例: API">
+                </div>
+                
+                <div class="form-group">
+                    <label for="meaningJa">意味 (日本語) *</label>
+                    <input type="text" id="meaningJa" required placeholder="例: アプリケーション・プログラミング・インターフェース">
+                </div>
+                
+                <div class="form-group">
+                    <label for="meaningEn">意味 (English)</label>
+                    <input type="text" id="meaningEn" placeholder="例: Application Programming Interface">
+                </div>
+                
+                <div class="form-group">
+                    <label for="category">カテゴリ</label>
+                    <input type="text" id="category" placeholder="例: IT, ビジネス, 技術">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="copyBtn" class="btn-secondary">📋 CSV形式でコピー</button>
+                    <button type="button" id="cancelBtn" class="btn-secondary">キャンセル</button>
+                </div>
+            </form>
+
+            <div id="copySuccess" class="copy-success" style="display: none;">
+                ✅ コピーしました! GitHub Issueまたはプルリクエストで提出してください。
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
