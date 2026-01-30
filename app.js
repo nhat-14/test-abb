@@ -1,8 +1,7 @@
 // Global variables
 let abbreviationsData = [];
 let filteredData = [];
-let editingIndex = -1; // Track which item is being edited
-
+let editingIndex = -1; // Track which item is being editedlet githubToken = localStorage.getItem('github_token') || ''; // Store token in browser
 // DOM Elements - will be initialized on page load
 let searchInput, clearBtn, tableBody, totalCount, filteredCount;
 let loading, errorDiv, noResults, addNewBtn, modal;
@@ -256,6 +255,72 @@ function closeModal() {
     editingIndex = -1;
 }
 
+// Save directly to GitHub via API
+async function saveToGitHub(abbr, meaningJa, meaningEn, category) {
+    if (!githubToken) {
+        // Prompt for token if not set
+        const token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new でトークンを作成\n2. "repo" スコープを選択\n3. トークンをコピーしてここに貼り付け');
+        if (!token) return false;
+        githubToken = token;
+        localStorage.setItem('github_token', token);
+    }
+    
+    const repo = 'MitsubishiElectric-InnerSource/me-ryakushou';
+    const filePath = 'data/abbreviations.csv';
+    const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+    
+    try {
+        // Get current file content and SHA
+        const getResponse = await fetch(apiUrl, {
+            headers: {
+                'Authorization': `token ${githubToken}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        
+        if (!getResponse.ok) {
+            throw new Error('ファイルの取得に失敗しました');
+        }
+        
+        const fileData = await getResponse.json();
+        const currentContent = atob(fileData.content);
+        
+        // Add new line to CSV
+        const csvLine = [abbr, meaningJa, meaningEn, category]
+            .map(field => `"${field.replace(/"/g, '""')}"`)
+            .join(',');
+        const newContent = currentContent.trim() + '\n' + csvLine + '\n';
+        
+        // Update file
+        const updateResponse = await fetch(apiUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${githubToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: `Add abbreviation: ${abbr}`,
+                content: btoa(unescape(encodeURIComponent(newContent))),
+                sha: fileData.sha
+            })
+        });
+        
+        if (!updateResponse.ok) {
+            throw new Error('ファイルの更新に失敗しました');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('GitHub API Error:', error);
+        alert('保存に失敗しました: ' + error.message + '\n\nトークンが正しいか確認してください。');
+        // Clear invalid token
+        githubToken = '';
+        localStorage.removeItem('github_token');
+        return false;
+    }
+}
+
 function saveFormData() {
     const abbr = document.getElementById('abbr').value.trim();
     const meaningJa = document.getElementById('meaningJa').value.trim();
@@ -275,42 +340,29 @@ function saveFormData() {
         return;
     }
     
-    // Create GitHub Issue URL with pre-filled data
-    const issueBody = `**略語:**
-${abbr}
-
-**意味 (日本語):**
-${meaningJa}
-
-**意味 (English):**
-${meaningEn}
-
-**カテゴリ:**
-${category}
-
----
-このIssueを作成すると、自動的にCSVファイルに追加されます。`;
+    // Show loading
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
     
-    const issueTitle = `[NEW] ${abbr}`;
-    const repoUrl = 'https://github.com/MitsubishiElectric-InnerSource/me-ryakushou';
-    const issueUrl = `${repoUrl}/issues/new?labels=new-abbreviation&title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
-    
-    // Show button to create GitHub Issue
-    const csvLine = [abbr, meaningJa, meaningEn, category]
-        .map(field => `"${field.replace(/"/g, '""')}"`)
-        .join(',');
-    
-    document.getElementById('csvOutput').innerHTML = `
-        <p style="margin-bottom: 15px;">✅ 略語情報が準備できました！</p>
-        <a href="${issueUrl}" target="_blank" class="btn-primary" style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
-            📝 GitHub Issueを作成して自動保存
-        </a>
-        <details style="margin-top: 15px;">
-            <summary style="cursor: pointer; color: #64748b;">手動でCSV形式をコピー</summary>
-            <code style="display: block; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; word-break: break-all;">${csvLine}</code>
-        </details>
-    `;
-    document.getElementById('saveSuccess').style.display = 'block';
+    // Save to GitHub
+    saveToGitHub(abbr, meaningJa, meaningEn, category).then(success => {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '保存';
+        
+        if (success) {
+            document.getElementById('csvOutput').innerHTML = `
+                <p style="color: #10b981; font-weight: bold;">✅ 保存が完了しました！</p>
+                <p>1〜2分後にページを更新すると反映されます。</p>
+            `;
+            document.getElementById('saveSuccess').style.display = 'block';
+            
+            // Clear form after 3 seconds
+            setTimeout(() => {
+                closeModal();
+            }, 3000);
+        }
+    });
 }
 
 // Initialize when DOM is ready
