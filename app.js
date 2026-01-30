@@ -260,7 +260,7 @@ async function saveToGitHub(abbr, meaningJa, meaningEn, category) {
     if (!githubToken) {
         // Prompt for token if not set
         const token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new でトークンを作成\n2. "repo" スコープを選択\n3. トークンをコピーしてここに貼り付け');
-        if (!token) return false;
+        if (!token) return { success: false, error: 'トークンが入力されませんでした' };
         githubToken = token;
         localStorage.setItem('github_token', token);
     }
@@ -270,6 +270,7 @@ async function saveToGitHub(abbr, meaningJa, meaningEn, category) {
     const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`;
     
     try {
+        console.log('Getting file from GitHub...');
         // Get current file content and SHA
         const getResponse = await fetch(apiUrl, {
             headers: {
@@ -279,17 +280,24 @@ async function saveToGitHub(abbr, meaningJa, meaningEn, category) {
         });
         
         if (!getResponse.ok) {
-            throw new Error('ファイルの取得に失敗しました');
+            const errorText = await getResponse.text();
+            console.error('Get file error:', errorText);
+            throw new Error(`ファイルの取得に失敗しました (${getResponse.status})`);
         }
         
         const fileData = await getResponse.json();
         const currentContent = atob(fileData.content);
+        
+        console.log('Current CSV length:', currentContent.length);
         
         // Add new line to CSV
         const csvLine = [abbr, meaningJa, meaningEn, category]
             .map(field => `"${field.replace(/"/g, '""')}"`)
             .join(',');
         const newContent = currentContent.trim() + '\n' + csvLine + '\n';
+        
+        console.log('New CSV line:', csvLine);
+        console.log('Updating file...');
         
         // Update file
         const updateResponse = await fetch(apiUrl, {
@@ -307,17 +315,19 @@ async function saveToGitHub(abbr, meaningJa, meaningEn, category) {
         });
         
         if (!updateResponse.ok) {
-            throw new Error('ファイルの更新に失敗しました');
+            const errorText = await updateResponse.text();
+            console.error('Update file error:', errorText);
+            throw new Error(`ファイルの更新に失敗しました (${updateResponse.status})`);
         }
         
-        return true;
+        console.log('Successfully saved!');
+        return { success: true };
     } catch (error) {
         console.error('GitHub API Error:', error);
-        alert('保存に失敗しました: ' + error.message + '\n\nトークンが正しいか確認してください。');
         // Clear invalid token
         githubToken = '';
         localStorage.removeItem('github_token');
-        return false;
+        return { success: false, error: error.message };
     }
 }
 
@@ -342,25 +352,37 @@ function saveFormData() {
     
     // Show loading
     const saveBtn = document.getElementById('saveBtn');
+    const originalText = saveBtn.textContent;
     saveBtn.disabled = true;
     saveBtn.textContent = '保存中...';
     
     // Save to GitHub
-    saveToGitHub(abbr, meaningJa, meaningEn, category).then(success => {
+    saveToGitHub(abbr, meaningJa, meaningEn, category).then(result => {
         saveBtn.disabled = false;
-        saveBtn.textContent = '保存';
+        saveBtn.textContent = originalText;
         
-        if (success) {
+        if (result.success) {
             document.getElementById('csvOutput').innerHTML = `
-                <p style="color: #10b981; font-weight: bold;">✅ 保存が完了しました！</p>
-                <p>1〜2分後にページを更新すると反映されます。</p>
+                <p style="color: #10b981; font-weight: bold; font-size: 1.2em;">✅ 保存が完了しました！</p>
+                <p style="margin: 10px 0;">データベースに追加されました。</p>
+                <button onclick="location.reload()" class="btn-primary" style="margin-top: 10px; padding: 10px 20px; cursor: pointer;">
+                    🔄 ページを更新して確認
+                </button>
             `;
             document.getElementById('saveSuccess').style.display = 'block';
             
-            // Clear form after 3 seconds
+            // Auto close modal after showing success
             setTimeout(() => {
+                document.getElementById('saveSuccess').style.display = 'none';
                 closeModal();
-            }, 3000);
+            }, 5000);
+        } else {
+            document.getElementById('csvOutput').innerHTML = `
+                <p style="color: #dc2626; font-weight: bold;">❌ 保存に失敗しました</p>
+                <p style="margin: 10px 0;">${result.error}</p>
+                <p style="font-size: 0.9em; color: #64748b;">トークンを再設定するには、ページを更新してもう一度試してください。</p>
+            `;
+            document.getElementById('saveSuccess').style.display = 'block';
         }
     });
 }
