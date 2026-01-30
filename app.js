@@ -275,17 +275,40 @@ function saveFormData() {
         return;
     }
     
+    // Create GitHub Issue URL with pre-filled data
+    const issueBody = `**略語:**
+${abbr}
+
+**意味 (日本語):**
+${meaningJa}
+
+**意味 (English):**
+${meaningEn}
+
+**カテゴリ:**
+${category}
+
+---
+このIssueを作成すると、自動的にCSVファイルに追加されます。`;
+    
+    const issueTitle = `[NEW] ${abbr}`;
+    const repoUrl = 'https://github.com/MitsubishiElectric-InnerSource/me-ryakushou';
+    const issueUrl = `${repoUrl}/issues/new?labels=new-abbreviation&title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
+    
+    // Show success message with link
     const csvLine = [abbr, meaningJa, meaningEn, category]
         .map(field => `"${field.replace(/"/g, '""')}"`)
         .join(',');
     
-    document.getElementById('csvOutput').textContent = csvLine;
+    document.getElementById('csvOutput').innerHTML = `
+        <strong>GitHub Issueを作成して自動保存：</strong><br>
+        <a href="${issueUrl}" target="_blank" style="color: #dc2626; font-weight: bold;">
+            → GitHub Issueを作成 (自動的にCSVに追加されます)
+        </a><br><br>
+        または手動でCSV形式をコピー：<br>
+        <code style="display: block; margin-top: 5px;">${csvLine}</code>
+    `;
     document.getElementById('saveSuccess').style.display = 'block';
-    
-    // Auto-copy to clipboard
-    navigator.clipboard.writeText(csvLine).catch(err => {
-        console.error('コピーに失敗しました:', err);
-    });
 }
 
 // Initialize when DOM is ready

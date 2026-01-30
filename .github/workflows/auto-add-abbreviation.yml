@@ -1,0 +1,66 @@
+name: Auto-add Abbreviation from Issue
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-abbreviation:
+    if: contains(github.event.issue.labels.*.name, 'new-abbreviation')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Extract abbreviation data from issue
+        id: extract
+        run: |
+          BODY="${{ github.event.issue.body }}"
+          
+          # Extract fields using grep and sed
+          ABBR=$(echo "$BODY" | grep -A1 "略語:" | tail -1 | xargs)
+          MEANING_JA=$(echo "$BODY" | grep -A1 "意味 (日本語):" | tail -1 | xargs)
+          MEANING_EN=$(echo "$BODY" | grep -A1 "意味 (English):" | tail -1 | xargs)
+          CATEGORY=$(echo "$BODY" | grep -A1 "カテゴリ:" | tail -1 | xargs)
+          
+          # Escape double quotes and create CSV line
+          ABBR=$(echo "$ABBR" | sed 's/"/""/g')
+          MEANING_JA=$(echo "$MEANING_JA" | sed 's/"/""/g')
+          MEANING_EN=$(echo "$MEANING_EN" | sed 's/"/""/g')
+          CATEGORY=$(echo "$CATEGORY" | sed 's/"/""/g')
+          
+          CSV_LINE="\"$ABBR\",\"$MEANING_JA\",\"$MEANING_EN\",\"$CATEGORY\""
+          echo "csv_line=$CSV_LINE" >> $GITHUB_OUTPUT
+      
+      - name: Add to CSV file
+        run: |
+          echo '${{ steps.extract.outputs.csv_line }}' >> data/abbreviations.csv
+      
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/abbreviations.csv
+          git commit -m "Add abbreviation from issue #${{ github.event.issue.number }}"
+          git push
+      
+      - name: Close issue with success message
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '✅ 略語が正常に追加されました！数分後にサイトに反映されます。'
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
