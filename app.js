@@ -357,7 +357,7 @@ function saveFormData() {
         document.getElementById('csvOutput').innerHTML = `
             <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ Markdown形式でコピーしました！</p>
             <p style="margin-bottom: 15px;">以下のリンクからGitHubでMarkdownファイルを編集してください：</p>
-            <a href="https://github.com/MitsubishiElectric-InnerSource/me-ryakushou/edit/main/data/abbreviations.md" 
+            <a href="https://github.com/nhat-14/test-abb/edit/main/data/abbreviations.md" 
                target="_blank" 
                class="btn-primary" 
                style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
