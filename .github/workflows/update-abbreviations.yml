@@ -28,7 +28,9 @@ jobs:
       
       - name: Update abbreviations file
         run: |
-          echo "${{ github.event.inputs.content || github.event.client_payload.content }}" > data/abbreviations.md
+          cat > data/abbreviations.md << 'EOF'
+          ${{ github.event.inputs.content || github.event.client_payload.content }}
+          EOF
       
       - name: Commit and push changes
         run: |
