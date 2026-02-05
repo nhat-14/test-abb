@@ -97,6 +97,11 @@
 - **English**: Representational State Transfer
 - **カテゴリ**: IT
 
+### ttttttttttttttttttttttt
+- **日本語**: ttttttttttttttttttttttt
+- **English**: ttttttttttttttttttttttttttt
+- **カテゴリ**: IT
+
 ---
 
 ## カテゴリ名
@@ -178,15 +183,6 @@
 - **日本語**: モノのインターネット
 - **English**: Internet of Things
 - **カテゴリ**: 技術
-
----
-
-## 未分類
-
-### rtrtr
-- **日本語**: trtrt
-- **English**: trtrt
-- **カテゴリ**: 
 
 ---
 
