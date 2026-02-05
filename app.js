@@ -381,10 +381,8 @@ function saveFormData() {
         alert('クリップボードへのコピーに失敗しました');
     });
     
-    // Close modal after a delay
-    setTimeout(() => {
-        closeModal();
-    }, 500);
+    // Don't auto-close modal - let user click the GitHub link first
+    // User can close manually by clicking X or Cancel
 }
 
 // Initialize when DOM is ready
