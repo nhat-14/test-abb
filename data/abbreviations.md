@@ -6,12 +6,7 @@
 
 各略語は以下の形式で記述してください：
 
-```
-### 略語名
-- **日本語**: 意味（日本語）
-- **English**: English Meaning
-- **カテゴリ**: カテゴリ名
-```
+
 
 ---
 
@@ -104,22 +99,12 @@
 
 ---
 
-## 技術
+## カテゴリ名
 
-### AI
-- **日本語**: 人工知能
-- **English**: Artificial Intelligence
-- **カテゴリ**: 技術
-
-### ML
-- **日本語**: 機械学習
-- **English**: Machine Learning
-- **カテゴリ**: 技術
-
-### IoT
-- **日本語**: モノのインターネット
-- **English**: Internet of Things
-- **カテゴリ**: 技術
+### 略語名
+- **日本語**: 意味（日本語）
+- **English**: English Meaning
+- **カテゴリ**: カテゴリ名
 
 ---
 
@@ -174,3 +159,35 @@
 - **日本語**: 最高経営責任者
 - **English**: Chief Executive Officer
 - **カテゴリ**: ビジネス
+
+---
+
+## 技術
+
+### AI
+- **日本語**: 人工知能
+- **English**: Artificial Intelligence
+- **カテゴリ**: 技術
+
+### ML
+- **日本語**: 機械学習
+- **English**: Machine Learning
+- **カテゴリ**: 技術
+
+### IoT
+- **日本語**: モノのインターネット
+- **English**: Internet of Things
+- **カテゴリ**: 技術
+
+---
+
+## 未分類
+
+### fdav
+- **日本語**: dvda
+- **English**: sdgdsg
+- **カテゴリ**: 
+
+---
+
+
