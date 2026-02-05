@@ -3,6 +3,13 @@ let abbreviationsData = [];
 let filteredData = [];
 let editingIndex = -1; // Track which item is being edited
 let githubToken = localStorage.getItem('github_token') || ''; // Store token in browser
+
+// GitHub configuration
+const GITHUB_OWNER = 'nhat-14';
+const GITHUB_REPO = 'test-abb';
+const FILE_PATH = 'data/abbreviations.md';
+const BRANCH = 'main';
+
 // DOM Elements - will be initialized on page load
 let searchInput, clearBtn, tableBody, totalCount, filteredCount;
 let loading, errorDiv, noResults, addNewBtn, modal;
@@ -131,6 +138,72 @@ function convertToMarkdown(item) {
 - **カテゴリ**: ${item.category}
 
 `;
+}
+
+// Commit to GitHub using API
+async function commitToGitHub(content, commitMessage) {
+    if (!githubToken) {
+        const token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. "repo" スコープを選択\n3. トークンを生成してコピー\n\n注: トークンはブラウザに安全に保存されます');
+        if (!token) {
+            throw new Error('トークンが入力されませんでした');
+        }
+        githubToken = token;
+        localStorage.setItem('github_token', token);
+    }
+
+    try {
+        // Get current file SHA
+        const getResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}?ref=${BRANCH}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${githubToken}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            }
+        );
+
+        if (!getResponse.ok) {
+            throw new Error(`GitHub API エラー: ${getResponse.status}`);
+        }
+
+        const fileData = await getResponse.json();
+        const sha = fileData.sha;
+
+        // Update file
+        const updateResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${githubToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: commitMessage,
+                    content: btoa(unescape(encodeURIComponent(content))),
+                    sha: sha,
+                    branch: BRANCH
+                })
+            }
+        );
+
+        if (!updateResponse.ok) {
+            const errorData = await updateResponse.json();
+            throw new Error(`コミット失敗: ${errorData.message || updateResponse.status}`);
+        }
+
+        return await updateResponse.json();
+    } catch (error) {
+        // If token is invalid, clear it
+        if (error.message.includes('401')) {
+            localStorage.removeItem('github_token');
+            githubToken = '';
+            throw new Error('トークンが無効です。再度入力してください。');
+        }
+        throw error;
+    }
 }
 
 // Generate full markdown content
@@ -352,37 +425,55 @@ function saveFormData() {
     renderTable(filteredData);
     updateStats();
     
-    // Copy to clipboard
-    navigator.clipboard.writeText(markdownContent).then(() => {
-        document.getElementById('csvOutput').innerHTML = `
-            <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ Markdown形式でコピーしました！</p>
-            <p style="margin-bottom: 15px;">以下のリンクからGitHubでMarkdownファイルを編集してください：</p>
-            <a href="https://github.com/nhat-14/test-abb/edit/main/data/abbreviations.md" 
-               target="_blank" 
-               class="btn-primary" 
-               style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
-                📝 GitHubでMarkdownを編集
-            </a>
-            <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
-                1. リンクをクリック<br>
-                2. ファイルの内容をすべて置き換え（Ctrl+A → ペースト）<br>
-                3. "Commit changes"をクリック
-            </p>
-            <details style="margin-top: 15px;">
-                <summary style="cursor: pointer; color: #64748b;">コピーした内容をプレビュー</summary>
-                <div style="max-height: 300px; overflow-y: auto; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                    <pre style="margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 0.85em;">${markdownContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                </div>
-            </details>
-        `;
-        document.getElementById('saveSuccess').style.display = 'block';
-    }).catch(err => {
-        console.error('Copy failed:', err);
-        alert('クリップボードへのコピーに失敗しました');
-    });
+    // Show loading message
+    document.getElementById('csvOutput').innerHTML = `
+        <p style="color: #3b82f6; font-size: 1.1em;">⏳ GitHubにコミット中...</p>
+    `;
+    document.getElementById('saveSuccess').style.display = 'block';
     
-    // Don't auto-close modal - let user click the GitHub link first
-    // User can close manually by clicking X or Cancel
+    // Commit to GitHub
+    const commitMessage = editingIndex >= 0 
+        ? `Update abbreviation: ${abbr}`
+        : `Add new abbreviation: ${abbr}`;
+    
+    commitToGitHub(markdownContent, commitMessage)
+        .then(result => {
+            document.getElementById('csvOutput').innerHTML = `
+                <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ GitHubに自動保存しました！</p>
+                <p style="margin-bottom: 15px;">変更が正常にコミットされました。</p>
+                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/blob/${BRANCH}/${FILE_PATH}" 
+                   target="_blank" 
+                   class="btn-primary" 
+                   style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
+                    📝 GitHubで確認
+                </a>
+                <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
+                    ページを再読み込みして変更を反映してください (F5)
+                </p>
+            `;
+            
+            // Auto-reload after 2 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        })
+        .catch(error => {
+            console.error('GitHub commit failed:', error);
+            document.getElementById('csvOutput').innerHTML = `
+                <p style="color: #ef4444; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">❌ エラーが発生しました</p>
+                <p style="margin-bottom: 15px;">${error.message}</p>
+                <p style="font-size: 0.9em; color: #64748b;">手動で編集するには:</p>
+                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/edit/${BRANCH}/${FILE_PATH}" 
+                   target="_blank" 
+                   class="btn-primary" 
+                   style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-top: 10px;">
+                    📝 GitHubで手動編集
+                </a>
+            `;
+            
+            // Copy to clipboard as fallback
+            navigator.clipboard.writeText(markdownContent).catch(() => {});
+        });
 }
 
 // Initialize when DOM is ready
@@ -423,6 +514,31 @@ document.addEventListener('DOMContentLoaded', function() {
     closeModalBtn.addEventListener('click', closeModal);
     saveBtn.addEventListener('click', saveFormData);
     cancelBtn.addEventListener('click', closeModal);
+    
+    // Token management button
+    const tokenBtn = document.getElementById('tokenBtn');
+    if (tokenBtn) {
+        tokenBtn.addEventListener('click', function() {
+            const action = githubToken ? 
+                'トークンを削除して新しいトークンを入力しますか？' : 
+                'GitHub Personal Access Tokenを入力してください';
+            
+            if (githubToken) {
+                if (confirm('現在のトークン: ' + githubToken.substring(0, 10) + '...\\n\\n' + action)) {
+                    localStorage.removeItem('github_token');
+                    githubToken = '';
+                    alert('トークンが削除されました。次回保存時に新しいトークンを入力してください。');
+                }
+            } else {
+                const token = prompt(action + ':\\n\\n1. https://github.com/settings/tokens/new にアクセス\\n2. \"repo\" スコープを選択\\n3. トークンを生成してコピー');
+                if (token) {
+                    githubToken = token;
+                    localStorage.setItem('github_token', token);
+                    alert('トークンが保存されました！');
+                }
+            }
+        });
+    }
     
     // Close modal when clicking outside
     window.addEventListener('click', function(event) {
