@@ -140,31 +140,50 @@ function convertToMarkdown(item) {
 `;
 }
 
-// Commit to GitHub using backend API
+// Commit to GitHub using GitHub Actions
 async function commitToGitHub(content, commitMessage) {
+    // GitHub Actions token is stored in GitHub Secrets - prompt user for personal token
+    let token = localStorage.getItem('github_actions_token');
+    
+    if (!token) {
+        token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. スコープを選択:\n   ✅ repo (全権限)\n   ✅ workflow\n3. トークンを生成してコピー\n\n注: トークンはブラウザに安全に保存されます');
+        if (!token) {
+            throw new Error('トークンが入力されませんでした');
+        }
+        localStorage.setItem('github_actions_token', token);
+    }
+
     try {
-        // Use backend serverless function instead of direct GitHub API
-        const apiEndpoint = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000/api/commit'  // Local development
-            : '/api/commit';  // Production (Vercel)
-        
-        const response = await fetch(apiEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                content: content,
-                message: commitMessage
-            })
-        });
+        // Trigger GitHub Actions workflow using repository_dispatch
+        const response = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/dispatches`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_type: 'update-abbreviations',
+                    client_payload: {
+                        content: content,
+                        message: commitMessage
+                    }
+                })
+            }
+        );
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.details || errorData.error || `エラー: ${response.status}`);
+            if (response.status === 401) {
+                localStorage.removeItem('github_actions_token');
+                throw new Error('トークンが無効です。ページを再読み込みして再度入力してください。');
+            }
+            throw new Error(`GitHub Actions トリガー失敗: ${response.status}`);
         }
 
-        return await response.json();
+        // GitHub Actions was triggered successfully
+        return { success: true };
     } catch (error) {
         console.error('Commit error:', error);
         throw error;
@@ -404,23 +423,23 @@ function saveFormData() {
     commitToGitHub(markdownContent, commitMessage)
         .then(result => {
             document.getElementById('csvOutput').innerHTML = `
-                <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ GitHubに自動保存しました！</p>
-                <p style="margin-bottom: 15px;">変更が正常にコミットされました。</p>
-                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/blob/${BRANCH}/${FILE_PATH}" 
+                <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ GitHub Actionsを起動しました！</p>
+                <p style="margin-bottom: 15px;">変更が数秒でコミットされます。</p>
+                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions" 
                    target="_blank" 
                    class="btn-primary" 
                    style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
-                    📝 GitHubで確認
+                    🔄 GitHub Actionsで進行状況を確認
                 </a>
                 <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
-                    ページを再読み込みして変更を反映してください (F5)
+                    ワークフローが完了したら、ページを再読み込みしてください (F5)
                 </p>
             `;
             
-            // Auto-reload after 2 seconds
+            // Auto-reload after 10 seconds to give Actions time to complete
             setTimeout(() => {
                 window.location.reload();
-            }, 2000);
+            }, 10000);
         })
         .catch(error => {
             console.error('GitHub commit failed:', error);
@@ -480,11 +499,24 @@ document.addEventListener('DOMContentLoaded', function() {
     saveBtn.addEventListener('click', saveFormData);
     cancelBtn.addEventListener('click', closeModal);
     
-    // Token management button - now just shows info since backend handles it
+    // Token management button
     const tokenBtn = document.getElementById('tokenBtn');
     if (tokenBtn) {
         tokenBtn.addEventListener('click', function() {
-            alert('✅ GitHub認証はバックエンドで自動設定されています。\n\nトークン設定は不要です！\n新しい略語を追加すると、自動的にGitHubにコミットされます。');
+            const token = localStorage.getItem('github_actions_token');
+            
+            if (token) {
+                if (confirm('現在のトークン: ' + token.substring(0, 10) + '...\n\nトークンを削除して新しいトークンを入力しますか？')) {
+                    localStorage.removeItem('github_actions_token');
+                    alert('トークンが削除されました。次回保存時に新しいトークンを入力してください。');
+                }
+            } else {
+                const newToken = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. スコープを選択:\n   ✅ repo (全権限)\n   ✅ workflow\n3. トークンを生成してコピー');
+                if (newToken) {
+                    localStorage.setItem('github_actions_token', newToken);
+                    alert('✅ トークンが保存されました！');
+                }
+            }
         });
     }
     
