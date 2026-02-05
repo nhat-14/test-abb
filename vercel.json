@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "api/commit.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "GITHUB_OWNER": "nhat-14",
+    "GITHUB_REPO": "test-abb"
+  }
+}

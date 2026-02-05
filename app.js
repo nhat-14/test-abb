@@ -140,68 +140,33 @@ function convertToMarkdown(item) {
 `;
 }
 
-// Commit to GitHub using API
+// Commit to GitHub using backend API
 async function commitToGitHub(content, commitMessage) {
-    if (!githubToken) {
-        const token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. "repo" スコープを選択\n3. トークンを生成してコピー\n\n注: トークンはブラウザに安全に保存されます');
-        if (!token) {
-            throw new Error('トークンが入力されませんでした');
-        }
-        githubToken = token;
-        localStorage.setItem('github_token', token);
-    }
-
     try {
-        // Get current file SHA
-        const getResponse = await fetch(
-            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}?ref=${BRANCH}`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${githubToken}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            }
-        );
+        // Use backend serverless function instead of direct GitHub API
+        const apiEndpoint = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000/api/commit'  // Local development
+            : '/api/commit';  // Production (Vercel)
+        
+        const response = await fetch(apiEndpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                content: content,
+                message: commitMessage
+            })
+        });
 
-        if (!getResponse.ok) {
-            throw new Error(`GitHub API エラー: ${getResponse.status}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || errorData.error || `エラー: ${response.status}`);
         }
 
-        const fileData = await getResponse.json();
-        const sha = fileData.sha;
-
-        // Update file
-        const updateResponse = await fetch(
-            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${githubToken}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: commitMessage,
-                    content: btoa(unescape(encodeURIComponent(content))),
-                    sha: sha,
-                    branch: BRANCH
-                })
-            }
-        );
-
-        if (!updateResponse.ok) {
-            const errorData = await updateResponse.json();
-            throw new Error(`コミット失敗: ${errorData.message || updateResponse.status}`);
-        }
-
-        return await updateResponse.json();
+        return await response.json();
     } catch (error) {
-        // If token is invalid, clear it
-        if (error.message.includes('401')) {
-            localStorage.removeItem('github_token');
-            githubToken = '';
-            throw new Error('トークンが無効です。再度入力してください。');
-        }
+        console.error('Commit error:', error);
         throw error;
     }
 }
@@ -515,28 +480,11 @@ document.addEventListener('DOMContentLoaded', function() {
     saveBtn.addEventListener('click', saveFormData);
     cancelBtn.addEventListener('click', closeModal);
     
-    // Token management button
+    // Token management button - now just shows info since backend handles it
     const tokenBtn = document.getElementById('tokenBtn');
     if (tokenBtn) {
         tokenBtn.addEventListener('click', function() {
-            const action = githubToken ? 
-                'トークンを削除して新しいトークンを入力しますか？' : 
-                'GitHub Personal Access Tokenを入力してください';
-            
-            if (githubToken) {
-                if (confirm('現在のトークン: ' + githubToken.substring(0, 10) + '...\\n\\n' + action)) {
-                    localStorage.removeItem('github_token');
-                    githubToken = '';
-                    alert('トークンが削除されました。次回保存時に新しいトークンを入力してください。');
-                }
-            } else {
-                const token = prompt(action + ':\\n\\n1. https://github.com/settings/tokens/new にアクセス\\n2. \"repo\" スコープを選択\\n3. トークンを生成してコピー');
-                if (token) {
-                    githubToken = token;
-                    localStorage.setItem('github_token', token);
-                    alert('トークンが保存されました！');
-                }
-            }
+            alert('✅ GitHub認証はバックエンドで自動設定されています。\n\nトークン設定は不要です！\n新しい略語を追加すると、自動的にGitHubにコミットされます。');
         });
     }
     
