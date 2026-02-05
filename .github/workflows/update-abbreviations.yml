@@ -13,6 +13,9 @@ on:
         required: true
         default: 'Update abbreviations'
 
+permissions:
+  contents: write
+
 jobs:
   update-file:
     runs-on: ubuntu-latest
