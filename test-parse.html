@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Markdown Parser</title>
+</head>
+<body>
+    <h1>Test Markdown Parser</h1>
+    <button onclick="testParse()">Test Parse</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testParse() {
+            const output = document.getElementById('output');
+            try {
+                const response = await fetch('data/abbreviations.md');
+                const text = await response.text();
+                
+                output.textContent = 'File loaded, length: ' + text.length + '\n\n';
+                output.textContent += 'First 500 chars:\n' + text.substring(0, 500) + '\n\n';
+                
+                // Test parsing
+                const sections = text.split(/^### /gm).slice(1);
+                output.textContent += 'Found ' + sections.length + ' sections\n\n';
+                
+                if (sections.length > 0) {
+                    output.textContent += 'First section:\n' + sections[0].substring(0, 200);
+                }
+                
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

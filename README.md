@@ -6,8 +6,10 @@
 
 - **検索機能**: 略語、日本語の意味、英語の意味、カテゴリで検索
 - **データ表示**: 見やすいテーブル形式で表示
-- **追加機能**: 新しい略語を追加するためのフォーム (CSV形式でコピー可能)
-- **エクスポート**: CSVファイルとしてダウンロード可能
+- **編集機能**: 既存の略語を編集可能 ✨ NEW
+- **追加機能**: 新しい略語を追加 ✨ NEW
+- **Markdown形式**: 読みやすく編集しやすいMarkdown形式でデータを管理 ✨ NEW
+- **即座に反映**: 編集や追加がリアルタイムでアプリに反映
 - **レスポンシブ**: モバイル端末でも利用可能
 
 ## 🚀 GitHub Pages へのデプロイ方法
@@ -50,7 +52,15 @@ https://YOUR_ORG.github.io/me-ryakushou/
 
 ## 📝 新しい略語の追加方法
 
-### 方法1: GitHub Issue を使用
+### 方法1: Web アプリから直接 (推奨) 🎯
+
+1. アプリを開く
+2. 「➕ 新しい略語を追加」ボタンをクリック
+3. フォームに情報を入力
+4. 「💾 保存してコピー」をクリック
+5. GitHubリンクから直接編集してコミット
+
+### 方法2: GitHub Issue を使用
 
 1. [新しい Issue を作成](https://github.com/YOUR_ORG/me-ryakushou/issues/new)
 2. 以下の情報を記載:
@@ -62,24 +72,25 @@ https://YOUR_ORG.github.io/me-ryakushou/
    ```
 3. Issue を提出
 
-### 方法2: Pull Request を使用
+### 方法3: Pull Request を使用
 
 1. リポジトリをフォークまたはクローン
-2. `data/abbreviations.csv` ファイルを編集
-3. 新しい行を追加:
-   ```csv
-   略語,意味(日本語),意味(English),カテゴリ
-   新略語,日本語の説明,English Explanation,カテゴリ名
+2. `data/abbreviations.md` ファイルを編集
+3. 該当カテゴリに新しい略語を追加:
+   ```markdown
+   ### API
+   - **日本語**: アプリケーション・プログラミング・インターフェース
+   - **English**: Application Programming Interface
+   - **カテゴリ**: IT
    ```
 4. Pull Request を作成
 
-### 方法3: Web アプリから直接
+## ✏️ 既存の略語の編集方法
 
-1. アプリを開く
-2. 「➕ 新しい略語を追加」ボタンをクリック
-3. フォームに情報を入力
-4. 「📋 CSV形式でコピー」をクリック
-5. GitHub Issue または PR にペースト
+1. アプリで編集したい略語の行にある「✏️」ボタンをクリック
+2. フォームで情報を修正
+3. 「💾 保存してコピー」をクリック
+4. GitHubリンクから全内容を置き換えてコミット
 
 ## 🗂 ファイル構成
 
@@ -87,9 +98,10 @@ https://YOUR_ORG.github.io/me-ryakushou/
 me-ryakushou/
 ├── index.html              # メインHTMLファイル
 ├── styles.css              # スタイルシート
-├── app.js                  # JavaScript (検索・表示ロジック)
+├── app.js                  # JavaScript (検索・表示・編集ロジック)
 ├── data/
-│   └── abbreviations.csv   # 略語データ (CSV形式)
+│   ├── abbreviations.md    # 略語データ (Markdown形式) ✨ NEW
+│   └── abbreviations.csv   # 略語データ (旧CSV形式) - 参考用
 ├── README.md               # このファイル
 ├── CONTRIBUTING.md         # 貢献ガイド
 └── .github/

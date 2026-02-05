@@ -1,51 +1,79 @@
 // Global variables
 let abbreviationsData = [];
 let filteredData = [];
-let editingIndex = -1; // Track which item is being editedlet githubToken = localStorage.getItem('github_token') || ''; // Store token in browser
+let editingIndex = -1; // Track which item is being edited
+let githubToken = localStorage.getItem('github_token') || ''; // Store token in browser
 // DOM Elements - will be initialized on page load
 let searchInput, clearBtn, tableBody, totalCount, filteredCount;
 let loading, errorDiv, noResults, addNewBtn, modal;
 let closeModalBtn, copyBtn, cancelBtn, copySuccess;
 
-// Load CSV data
-async function loadCSV() {
+// Load Markdown data
+async function loadData() {
+    console.log('Loading markdown data...');
     try {
-        const response = await fetch('data/abbreviations.csv');
+        console.log('Fetching: data/abbreviations.md');
+        const response = await fetch('data/abbreviations.md');
+        console.log('Response status:', response.status, response.statusText);
+        
         if (!response.ok) {
-            throw new Error('CSV file not found');
+            throw new Error('Markdown file not found (status: ' + response.status + ')');
         }
         
-        const csvText = await response.text();
-        parseCSV(csvText);
+        const mdText = await response.text();
+        console.log('Markdown loaded, length:', mdText.length);
+        parseMarkdown(mdText);
         
         loading.style.display = 'none';
+        console.log('Rendering complete');
         renderTable(abbreviationsData);
         updateStats();
         
     } catch (error) {
+        console.error('Error loading data:', error);
         loading.style.display = 'none';
         errorDiv.textContent = `エラー: ${error.message}`;
         errorDiv.style.display = 'block';
     }
 }
 
-// Parse CSV text
-function parseCSV(text) {
-    const lines = text.split('\n');
+// Parse Markdown text
+function parseMarkdown(text) {
+    console.log('Parsing markdown, length:', text.length);
     abbreviationsData = [];
     
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line) {
-            const values = parseCSVLine(line);
-            if (values.length >= 2) {
-                abbreviationsData.push({
-                    abbreviation: values[0] || '',
-                    meaningJa: values[1] || '',
-                    meaningEn: values[2] || '',
-                    category: values[3] || ''
-                });
+    // Split by ### headers (abbreviations) - using proper multiline regex
+    const sections = text.split(/^### /gm).slice(1); // Skip first split (header)
+    
+    for (const section of sections) {
+        const lines = section.trim().split('\n');
+        if (lines.length === 0) continue;
+        
+        const abbreviation = lines[0].trim();
+        let meaningJa = '';
+        let meaningEn = '';
+        let category = '';
+        
+        // Parse bullet points
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (line.startsWith('- **日本語**:')) {
+                meaningJa = line.replace('- **日本語**:', '').trim();
+            } else if (line.startsWith('- **English**:')) {
+                meaningEn = line.replace('- **English**:', '').trim();
+            } else if (line.startsWith('- **カテゴリ**:')) {
+                category = line.replace('- **カテゴリ**:', '').trim();
             }
+        }
+        
+        if (abbreviation && meaningJa) {
+            abbreviationsData.push({
+                abbreviation,
+                meaningJa,
+                meaningEn,
+                category
+            });
         }
     }
     
@@ -95,33 +123,57 @@ function populateCategoryDropdown() {
     console.log('Dropdown populated with', categorySelect.options.length, 'options');
 }
 
-// Parse CSV line (handles quotes and commas)
-function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
+// Convert data to Markdown format
+function convertToMarkdown(item) {
+    return `### ${item.abbreviation}
+- **日本語**: ${item.meaningJa}
+- **English**: ${item.meaningEn}
+- **カテゴリ**: ${item.category}
+
+`;
+}
+
+// Generate full markdown content
+function generateMarkdownContent() {
+    let content = `# 略語データベース (Abbreviation Database)
+
+このファイルを編集して、新しい略語を追加したり既存の略語を修正したりできます。
+
+## データ形式
+
+各略語は以下の形式で記述してください：
+
+\`\`\`
+### 略語名
+- **日本語**: 意味（日本語）
+- **English**: English Meaning
+- **カテゴリ**: カテゴリ名
+\`\`\`
+
+---
+
+`;
     
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        const nextChar = line[i + 1];
-        
-        if (char === '"') {
-            if (inQuotes && nextChar === '"') {
-                current += '"';
-                i++;
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if (char === ',' && !inQuotes) {
-            result.push(current.trim());
-            current = '';
-        } else {
-            current += char;
+    // Group by category
+    const categories = {};
+    abbreviationsData.forEach(item => {
+        const cat = item.category || '未分類';
+        if (!categories[cat]) {
+            categories[cat] = [];
         }
-    }
+        categories[cat].push(item);
+    });
     
-    result.push(current.trim());
-    return result;
+    // Generate content for each category
+    Object.keys(categories).sort().forEach(category => {
+        content += `## ${category}\n\n`;
+        categories[category].forEach(item => {
+            content += convertToMarkdown(item);
+        });
+        content += '---\n\n';
+    });
+    
+    return content;
 }
 
 // Render table with edit buttons
@@ -261,7 +313,6 @@ function saveFormData() {
     const meaningJa = document.getElementById('meaningJa').value.trim();
     const meaningEn = document.getElementById('meaningEn').value.trim();
     
-    // Get category from dropdown or custom input
     const categorySelect = document.getElementById('categorySelect');
     let category = '';
     if (categorySelect.value === '__other__') {
@@ -275,30 +326,53 @@ function saveFormData() {
         return;
     }
     
-    // Create CSV line
-    const csvLine = [abbr, meaningJa, meaningEn, category]
-        .map(field => `"${field.replace(/"/g, '""')}"`)
-        .join(',');
+    const newItem = {
+        abbreviation: abbr,
+        meaningJa: meaningJa,
+        meaningEn: meaningEn,
+        category: category
+    };
+    
+    // Update or add to data
+    if (editingIndex >= 0) {
+        // Edit existing entry
+        const actualIndex = abbreviationsData.indexOf(filteredData[editingIndex]);
+        abbreviationsData[actualIndex] = newItem;
+    } else {
+        // Add new entry
+        abbreviationsData.push(newItem);
+    }
+    
+    // Regenerate markdown
+    const markdownContent = generateMarkdownContent();
+    
+    // Update filtered data
+    filteredData = [...abbreviationsData];
+    populateCategoryDropdown();
+    renderTable(filteredData);
+    updateStats();
     
     // Copy to clipboard
-    navigator.clipboard.writeText(csvLine).then(() => {
+    navigator.clipboard.writeText(markdownContent).then(() => {
         document.getElementById('csvOutput').innerHTML = `
-            <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ CSV形式でコピーしました！</p>
-            <p style="margin-bottom: 15px;">以下のリンクからGitHubでCSVファイルを編集してください：</p>
-            <a href="https://github.com/MitsubishiElectric-InnerSource/me-ryakushou/edit/main/data/abbreviations.csv" 
+            <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ Markdown形式でコピーしました！</p>
+            <p style="margin-bottom: 15px;">以下のリンクからGitHubでMarkdownファイルを編集してください：</p>
+            <a href="https://github.com/MitsubishiElectric-InnerSource/me-ryakushou/edit/main/data/abbreviations.md" 
                target="_blank" 
                class="btn-primary" 
                style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
-                📝 GitHubでCSVを編集
+                📝 GitHubでMarkdownを編集
             </a>
             <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
                 1. リンクをクリック<br>
-                2. ファイルの最後にペースト<br>
+                2. ファイルの内容をすべて置き換え（Ctrl+A → ペースト）<br>
                 3. "Commit changes"をクリック
             </p>
             <details style="margin-top: 15px;">
-                <summary style="cursor: pointer; color: #64748b;">コピーした内容を確認</summary>
-                <code style="display: block; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; word-break: break-all;">${csvLine}</code>
+                <summary style="cursor: pointer; color: #64748b;">コピーした内容をプレビュー</summary>
+                <div style="max-height: 300px; overflow-y: auto; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                    <pre style="margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 0.85em;">${markdownContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                </div>
             </details>
         `;
         document.getElementById('saveSuccess').style.display = 'block';
@@ -306,6 +380,11 @@ function saveFormData() {
         console.error('Copy failed:', err);
         alert('クリップボードへのコピーに失敗しました');
     });
+    
+    // Close modal after a delay
+    setTimeout(() => {
+        closeModal();
+    }, 500);
 }
 
 // Initialize when DOM is ready
@@ -365,6 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Load CSV data
-    loadCSV();
+    // Load data
+    console.log('Calling loadData()...');
+    loadData();
 });
