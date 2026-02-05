@@ -6,7 +6,12 @@
 
 各略語は以下の形式で記述してください：
 
-
+```
+### 略語名
+- **日本語**: 意味（日本語）
+- **English**: English Meaning
+- **カテゴリ**: カテゴリ名
+```
 
 ---
 
@@ -97,11 +102,6 @@
 - **English**: Representational State Transfer
 - **カテゴリ**: IT
 
-### ttttttttttttttttttttttt
-- **日本語**: ttttttttttttttttttttttt
-- **English**: ttttttttttttttttttttttttttt
-- **カテゴリ**: IT
-
 ---
 
 ## カテゴリ名
@@ -183,6 +183,15 @@
 - **日本語**: モノのインターネット
 - **English**: Internet of Things
 - **カテゴリ**: 技術
+
+---
+
+## 未分類
+
+### AAAAA
+- **日本語**: AAAAAA
+- **English**: AAAAAA
+- **カテゴリ**: 
 
 ---
 
