@@ -140,13 +140,12 @@ function convertToMarkdown(item) {
 `;
 }
 
-// Commit to GitHub using GitHub Actions
-async function commitToGitHub(content, commitMessage) {
-    // GitHub Actions token is stored in GitHub Secrets - prompt user for personal token
+// Create pull request on GitHub
+async function createPullRequestToGitHub(content, commitMessage) {
     let token = localStorage.getItem('github_actions_token');
     
     if (!token) {
-        token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. スコープを選択:\n   ✅ repo (全権限)\n   ✅ workflow\n3. トークンを生成してコピー\n\n注: トークンはブラウザに安全に保存されます');
+        token = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. スコープを選択:\n   ✅ repo (全権限)\n3. トークンを生成してコピー\n\n注: トークンはブラウザに安全に保存されます');
         if (!token) {
             throw new Error('トークンが入力されませんでした');
         }
@@ -154,38 +153,114 @@ async function commitToGitHub(content, commitMessage) {
     }
 
     try {
-        // Trigger GitHub Actions workflow using repository_dispatch
-        const response = await fetch(
-            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/dispatches`,
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+        };
+
+        const branchName = `update-abbreviations-${Date.now()}`;
+
+        // 1) Get base branch SHA
+        const baseRefResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/ref/heads/${BRANCH}`,
+            { headers }
+        );
+
+        if (!baseRefResponse.ok) {
+            if (baseRefResponse.status === 401) {
+                localStorage.removeItem('github_actions_token');
+                throw new Error('トークンが無効です。ページを再読み込みして再度入力してください。');
+            }
+            throw new Error(`ベースブランチ取得失敗: ${baseRefResponse.status}`);
+        }
+
+        const baseRefData = await baseRefResponse.json();
+        const baseSha = baseRefData.object?.sha;
+
+        if (!baseSha) {
+            throw new Error('ベースブランチのSHA取得に失敗しました');
+        }
+
+        // 2) Create feature branch
+        const createRefResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs`,
             {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
+                headers,
                 body: JSON.stringify({
-                    event_type: 'update-abbreviations',
-                    client_payload: {
-                        content: content,
-                        message: commitMessage
-                    }
+                    ref: `refs/heads/${branchName}`,
+                    sha: baseSha
                 })
             }
         );
 
-        if (!response.ok) {
-            if (response.status === 401) {
-                localStorage.removeItem('github_actions_token');
-                throw new Error('トークンが無効です。ページを再読み込みして再度入力してください。');
-            }
-            throw new Error(`GitHub Actions トリガー失敗: ${response.status}`);
+        if (!createRefResponse.ok) {
+            throw new Error(`作業ブランチ作成失敗: ${createRefResponse.status}`);
         }
 
-        // GitHub Actions was triggered successfully
-        return { success: true };
+        // 3) Get target file SHA on new branch
+        const fileResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}?ref=${branchName}`,
+            { headers }
+        );
+
+        if (!fileResponse.ok) {
+            throw new Error(`対象ファイル取得失敗: ${fileResponse.status}`);
+        }
+
+        const fileData = await fileResponse.json();
+        const fileSha = fileData.sha;
+
+        // 4) Commit updated markdown to feature branch
+        const updateFileResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`,
+            {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                    message: commitMessage,
+                    content: btoa(unescape(encodeURIComponent(content))),
+                    sha: fileSha,
+                    branch: branchName
+                })
+            }
+        );
+
+        if (!updateFileResponse.ok) {
+            throw new Error(`ファイル更新失敗: ${updateFileResponse.status}`);
+        }
+
+        // 5) Create pull request
+        const prTitle = commitMessage;
+        const prBody = `Web app からの更新です。\n\n- File: ${FILE_PATH}\n- Source: in-browser edit/add operation`;
+        const createPrResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`,
+            {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    title: prTitle,
+                    head: branchName,
+                    base: BRANCH,
+                    body: prBody
+                })
+            }
+        );
+
+        if (!createPrResponse.ok) {
+            throw new Error(`Pull Request作成失敗: ${createPrResponse.status}`);
+        }
+
+        const prData = await createPrResponse.json();
+
+        return {
+            success: true,
+            prUrl: prData.html_url,
+            branchName
+        };
     } catch (error) {
-        console.error('Commit error:', error);
+        console.error('PR creation error:', error);
         throw error;
     }
 }
@@ -411,7 +486,7 @@ function saveFormData() {
     
     // Show loading message
     document.getElementById('csvOutput').innerHTML = `
-        <p style="color: #3b82f6; font-size: 1.1em;">⏳ GitHubにコミット中...</p>
+        <p style="color: #3b82f6; font-size: 1.1em;">⏳ Pull Request を作成中...</p>
     `;
     document.getElementById('saveSuccess').style.display = 'block';
     
@@ -420,29 +495,26 @@ function saveFormData() {
         ? `Update abbreviation: ${abbr}`
         : `Add new abbreviation: ${abbr}`;
     
-    commitToGitHub(markdownContent, commitMessage)
+    createPullRequestToGitHub(markdownContent, commitMessage)
         .then(result => {
             document.getElementById('csvOutput').innerHTML = `
-                <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ GitHub Actionsを起動しました！</p>
-                <p style="margin-bottom: 15px;">変更が数秒でコミットされます。</p>
-                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions" 
+                <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ Pull Request を作成しました！</p>
+                <p style="margin-bottom: 15px;">レビューしてマージすると本番データに反映されます。</p>
+                <a href="${result.prUrl}" 
                    target="_blank" 
                    class="btn-primary" 
                    style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
-                    🔄 GitHub Actionsで進行状況を確認
+                    🔍 Pull Request を開く
                 </a>
                 <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
-                    ワークフローが完了したら、ページを再読み込みしてください (F5)
+                    マージ後にページを再読み込みしてください (F5)
                 </p>
             `;
             
-            // Auto-reload after 10 seconds to give Actions time to complete
-            setTimeout(() => {
-                window.location.reload();
-            }, 10000);
+            // Keep modal open so user can click PR link
         })
         .catch(error => {
-            console.error('GitHub commit failed:', error);
+            console.error('GitHub PR creation failed:', error);
             document.getElementById('csvOutput').innerHTML = `
                 <p style="color: #ef4444; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">❌ エラーが発生しました</p>
                 <p style="margin-bottom: 15px;">${error.message}</p>
@@ -511,7 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('トークンが削除されました。次回保存時に新しいトークンを入力してください。');
                 }
             } else {
-                const newToken = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. スコープを選択:\n   ✅ repo (全権限)\n   ✅ workflow\n3. トークンを生成してコピー');
+                const newToken = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. スコープを選択:\n   ✅ repo (全権限)\n3. トークンを生成してコピー');
                 if (newToken) {
                     localStorage.setItem('github_actions_token', newToken);
                     alert('✅ トークンが保存されました！');
