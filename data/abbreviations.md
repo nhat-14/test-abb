@@ -111,6 +111,11 @@
 - **English**: English Meaning
 - **カテゴリ**: カテゴリ名
 
+### 略語名
+- **日本語**: 意味（日本語）
+- **English**: English Meaning
+- **カテゴリ**: カテゴリ名
+
 ---
 
 ## ビジネス
@@ -193,6 +198,10 @@
 - **English**: AAAAAA
 - **カテゴリ**: 
 
----
+### ABC
+- **日本語**: abc bcs ccc
+- **English**: 
+- **カテゴリ**: 
 
+---
 
