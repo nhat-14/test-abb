@@ -318,7 +318,10 @@ function renderTable(data) {
     }
     
     noResults.style.display = 'none';
-    const visibleData = data.slice(0, HOMEPAGE_DISPLAY_LIMIT);
+    
+    // Apply homepage display limit only when no search filter is active
+    const isSearchActive = searchInput && searchInput.value.trim() !== '';
+    const visibleData = isSearchActive ? data : data.slice(0, HOMEPAGE_DISPLAY_LIMIT);
     
     tableBody.innerHTML = visibleData.map((item, index) => `
         <tr>
