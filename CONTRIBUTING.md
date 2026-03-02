@@ -130,7 +130,7 @@ git push origin add-abbreviation-API
 1. Issue または PR が提出される
 2. 管理者がレビュー (1-3営業日)
 3. 必要に応じて修正依頼
-4. 承認後、`data/abbreviations.csv` にマージ
+4. 承認後、`data/abbreviations.md` にマージ
 5. 自動的に GitHub Pages にデプロイ
 
 ## 品質基準

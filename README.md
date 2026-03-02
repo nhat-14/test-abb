@@ -101,7 +101,6 @@ me-ryakushou/
 ├── app.js                  # JavaScript (検索・表示・編集ロジック)
 ├── data/
 │   ├── abbreviations.md    # 略語データ (Markdown形式) ✨ NEW
-│   └── abbreviations.csv   # 略語データ (旧CSV形式) - 参考用
 ├── README.md               # このファイル
 ├── CONTRIBUTING.md         # 貢献ガイド
 └── .github/
@@ -131,18 +130,6 @@ npx http-server -p 8000
 http://localhost:8000
 ```
 
-## 📊 CSV フォーマット
-
-```csv
-略語,意味(日本語),意味(English),カテゴリ
-API,アプリケーション・プログラミング・インターフェース,Application Programming Interface,IT
-```
-
-**注意事項:**
-- カンマを含む場合はダブルクォートで囲む
-- ダブルクォート自体を含む場合は `""` とエスケープ
-- 改行は避ける
-
 ## 🤝 貢献
 
 詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
@@ -155,7 +142,7 @@ API,アプリケーション・プログラミング・インターフェース,
 
 - このアプリは静的ファイルのみで構成
 - バックエンドサーバーは不要
-- データは CSV ファイルに保存
+- データは Markdown ファイルに保存
 - 社内リポジトリとして管理することを推奨
 
 ## 💡 今後の拡張案
