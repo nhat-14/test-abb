@@ -102,9 +102,19 @@
 - **English**: Representational State Transfer
 - **カテゴリ**: IT
 
+### CLA
+- **日本語**: 貢献者ライセンス契約
+- **English**: Contributor License Agreement
+- **カテゴリ**: IT
+
 ---
 
 ## カテゴリ名
+
+### 略語名
+- **日本語**: 意味（日本語）
+- **English**: English Meaning
+- **カテゴリ**: カテゴリ名
 
 ### 略語名
 - **日本語**: 意味（日本語）
@@ -185,3 +195,4 @@
 - **カテゴリ**: 技術
 
 ---
+
