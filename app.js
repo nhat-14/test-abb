@@ -439,10 +439,7 @@ function openModal() {
     document.getElementById('saveSuccess').style.display = 'none';
 }
 
-/**
- * モーダルダイアログを閉じて、編集状態をリセットします。
- * モーダル要素を非表示にし、編集インデックスをクリアして、成功メッセージを非表示にします。
- */
+// Close modal and reset editing state
 function closeModal() {
     modal.style.display = 'none';
     editingIndex = -1;
