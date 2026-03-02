@@ -3,6 +3,7 @@ let abbreviationsData = [];
 let filteredData = [];
 let editingIndex = -1; // Track which item is being edited
 let githubToken = localStorage.getItem('github_token') || ''; // Store token in browser
+const HOMEPAGE_DISPLAY_LIMIT = 10;
 
 // GitHub configuration
 const GITHUB_OWNER = 'nhat-14';
@@ -317,8 +318,9 @@ function renderTable(data) {
     }
     
     noResults.style.display = 'none';
+    const visibleData = data.slice(0, HOMEPAGE_DISPLAY_LIMIT);
     
-    tableBody.innerHTML = data.map((item, index) => `
+    tableBody.innerHTML = visibleData.map((item, index) => `
         <tr>
             <td>${escapeHtml(item.abbreviation)}</td>
             <td>${escapeHtml(item.meaningJa)}</td>

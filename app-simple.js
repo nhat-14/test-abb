@@ -1,6 +1,7 @@
 // Global variables
 let abbreviationsData = [];
 let filteredData = [];
+const HOMEPAGE_DISPLAY_LIMIT = 10;
 
 // DOM Elements - will be initialized on page load
 let searchInput, clearBtn, tableBody, totalCount, filteredCount;
@@ -90,8 +91,9 @@ function renderTable(data) {
     }
     
     noResults.style.display = 'none';
+    const visibleData = data.slice(0, HOMEPAGE_DISPLAY_LIMIT);
     
-    tableBody.innerHTML = data.map(item => `
+    tableBody.innerHTML = visibleData.map(item => `
         <tr>
             <td>${escapeHtml(item.abbreviation)}</td>
             <td>${escapeHtml(item.meaningJa)}</td>
