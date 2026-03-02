@@ -91,7 +91,8 @@ function renderTable(data) {
     }
     
     noResults.style.display = 'none';
-    const visibleData = data.slice(0, HOMEPAGE_DISPLAY_LIMIT);
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    const visibleData = searchTerm === '' ? data.slice(0, HOMEPAGE_DISPLAY_LIMIT) : data;
     
     tableBody.innerHTML = visibleData.map(item => `
         <tr>
