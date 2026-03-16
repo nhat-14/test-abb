@@ -72,7 +72,7 @@ function parseMarkdown(text) {
             }
         }
         
-        if (abbreviation && meaningJa) {
+        if (abbreviation && (meaningJa || meaningEn)) {
             abbreviationsData.push({
                 abbreviation,
                 meaningJa,
@@ -280,6 +280,7 @@ function renderTable(data) {
         <tr class="editable-row" data-index="${index}" title="クリックして編集">
             <td>${escapeHtml(item.abbreviation)}</td>
             <td>${escapeHtml(item.meaningJa)}</td>
+            <td>${escapeHtml(item.meaningEn)}</td>
         </tr>
     `).join('');
 
@@ -324,6 +325,7 @@ function editAbbreviation(index) {
     // Pre-fill the form
     document.getElementById('abbr').value = item.abbreviation;
     document.getElementById('meaningJa').value = item.meaningJa;
+    document.getElementById('meaningEn').value = item.meaningEn;
     
     // Update modal title
     document.querySelector('.modal-content h2').textContent = '略語を編集';
@@ -351,18 +353,17 @@ function closeModal() {
 function saveFormData() {
     const abbr = document.getElementById('abbr').value.trim();
     const meaningJa = document.getElementById('meaningJa').value.trim();
-    let meaningEn = '';
+    const meaningEn = document.getElementById('meaningEn').value.trim();
     let category = '';
 
-    // Keep existing optional fields when editing, because the simplified form no longer exposes them.
+    // Keep category when editing because simplified form does not expose category.
     if (editingIndex >= 0) {
         const existingItem = filteredData[editingIndex];
-        meaningEn = existingItem.meaningEn || '';
         category = existingItem.category || '';
     }
     
-    if (!abbr || !meaningJa) {
-        alert('略語と日本語の意味は必須です');
+    if (!abbr || (!meaningJa && !meaningEn)) {
+        alert('略語は必須です。意味は日本語または英語のどちらかを入力してください。');
         return;
     }
     
