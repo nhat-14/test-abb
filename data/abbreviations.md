@@ -90,6 +90,10 @@
 - **日本語**: 
 - **English**: Mitsubishi Electric Corporation
 
+### MESW
+- **日本語**: 三菱電機ソフトウエア株式会社
+- **English**: Mitsubishi Electric Software Corporation
+
 ### ML
 - **日本語**: 機械学習
 - **English**: Machine Learning
