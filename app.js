@@ -8,11 +8,17 @@ const GITHUB_OWNER = 'nhat-14';
 const GITHUB_REPO = 'test-abb';
 const FILE_PATH = 'data/abbreviations.md';
 const BRANCH = 'main';
+const DEFAULT_COMMIT_API_URL = '/api/commit';
+const COMMIT_API_URL_STORAGE_KEY = 'commit_api_url';
 
 // DOM Elements - will be initialized on page load
 let searchInput, tableBody;
 let loading, errorDiv, noResults, addNewBtn, modal;
 let closeModalBtn, cancelBtn;
+
+function getCommitApiUrl() {
+    return localStorage.getItem(COMMIT_API_URL_STORAGE_KEY) || DEFAULT_COMMIT_API_URL;
+}
 
 // Load Markdown data
 async function loadData() {
@@ -100,7 +106,9 @@ function convertToMarkdown(item) {
 
 // Save through server-side API so end users do not need personal access tokens.
 async function commitViaServer(content, commitMessage) {
-    const response = await fetch('/api/commit', {
+    const commitApiUrl = getCommitApiUrl();
+
+    const response = await fetch(commitApiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -116,6 +124,20 @@ async function commitViaServer(content, commitMessage) {
         responseData = await response.json();
     } catch (error) {
         console.warn('Failed to parse API response JSON:', error);
+    }
+
+    if ((response.status === 404 || response.status === 405) && commitApiUrl === DEFAULT_COMMIT_API_URL) {
+        const customApiUrl = prompt(
+            'このサイトでは保存API (/api/commit) が利用できません。\n\n' +
+            'VercelなどにデプロイしたAPI URLを入力してください。\n' +
+            '例: https://your-project.vercel.app/api/commit\n\n' +
+            '入力したURLはこのブラウザに保存され、次回から自動使用されます。'
+        );
+
+        if (customApiUrl && customApiUrl.trim()) {
+            localStorage.setItem(COMMIT_API_URL_STORAGE_KEY, customApiUrl.trim());
+            return commitViaServer(content, commitMessage);
+        }
     }
 
     if (!response.ok || !responseData.success) {
