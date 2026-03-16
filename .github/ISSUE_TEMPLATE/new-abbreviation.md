@@ -2,7 +2,7 @@
 name: 新しい略語を追加
 about: 略語辞典に新しい略語を追加または更新します
 title: '[NEW] '
-labels: new-abbreviation
+labels: enhancement
 assignees: ''
 ---
 

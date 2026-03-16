@@ -123,7 +123,7 @@ ${item.meaningEn}
 function buildIssueUrl(item, originalAbbreviation, isEdit) {
     const issueUrl = new URL(`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues/new`);
     issueUrl.searchParams.set('template', 'new-abbreviation.md');
-    issueUrl.searchParams.set('labels', 'new-abbreviation');
+    issueUrl.searchParams.set('labels', 'enhancement');
     issueUrl.searchParams.set('title', buildIssueTitle(item.abbreviation, isEdit));
     issueUrl.searchParams.set('body', buildIssueBody(item, originalAbbreviation));
     return issueUrl.toString();
