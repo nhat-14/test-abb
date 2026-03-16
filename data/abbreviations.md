@@ -87,7 +87,7 @@
 - **English**: Key Performance Indicator
 
 ### MELCO
-- **日本語**: 
+- **日本語**: 三菱電機株式会社
 - **English**: Mitsubishi Electric Corporation
 
 ### MESW
