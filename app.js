@@ -20,6 +20,22 @@ function getCommitApiUrl() {
     return localStorage.getItem(COMMIT_API_URL_STORAGE_KEY) || DEFAULT_COMMIT_API_URL;
 }
 
+function promptForCommitApiUrl(currentUrl) {
+    const customApiUrl = prompt(
+        '保存APIに接続できませんでした。\n\n' +
+        'VercelなどにデプロイしたAPI URLを入力してください。\n' +
+        '例: https://your-project.vercel.app/api/commit\n\n' +
+        '入力したURLはこのブラウザに保存され、次回から自動使用されます。',
+        currentUrl === DEFAULT_COMMIT_API_URL ? '' : currentUrl
+    );
+
+    if (!customApiUrl || !customApiUrl.trim()) {
+        return null;
+    }
+
+    return customApiUrl.trim();
+}
+
 // Load Markdown data
 async function loadData() {
     console.log('Loading markdown data...');
@@ -105,7 +121,7 @@ function convertToMarkdown(item) {
 }
 
 // Save through server-side API so end users do not need personal access tokens.
-async function commitViaServer(content, commitMessage) {
+async function commitViaServer(content, commitMessage, retryCount = 0) {
     const commitApiUrl = getCommitApiUrl();
 
     const response = await fetch(commitApiUrl, {
@@ -126,21 +142,23 @@ async function commitViaServer(content, commitMessage) {
         console.warn('Failed to parse API response JSON:', error);
     }
 
-    if ((response.status === 404 || response.status === 405) && commitApiUrl === DEFAULT_COMMIT_API_URL) {
-        const customApiUrl = prompt(
-            'このサイトでは保存API (/api/commit) が利用できません。\n\n' +
-            'VercelなどにデプロイしたAPI URLを入力してください。\n' +
-            '例: https://your-project.vercel.app/api/commit\n\n' +
-            '入力したURLはこのブラウザに保存され、次回から自動使用されます。'
-        );
+    if ((response.status === 404 || response.status === 405) && retryCount < 2) {
+        const customApiUrl = promptForCommitApiUrl(commitApiUrl);
+        if (customApiUrl) {
+            localStorage.setItem(COMMIT_API_URL_STORAGE_KEY, customApiUrl);
+            return commitViaServer(content, commitMessage, retryCount + 1);
+        }
 
-        if (customApiUrl && customApiUrl.trim()) {
-            localStorage.setItem(COMMIT_API_URL_STORAGE_KEY, customApiUrl.trim());
-            return commitViaServer(content, commitMessage);
+        if (commitApiUrl !== DEFAULT_COMMIT_API_URL) {
+            localStorage.removeItem(COMMIT_API_URL_STORAGE_KEY);
         }
     }
 
     if (!response.ok || !responseData.success) {
+        if (responseData.error === 'GitHub token not configured') {
+            throw new Error('保存API側でGITHUB_TOKENが未設定です。管理者がVercel/Netlifyの環境変数を設定してください。');
+        }
+
         const details = responseData.details ? ` (${responseData.details})` : '';
         throw new Error(responseData.error || `保存に失敗しました: ${response.status}${details}`);
     }
