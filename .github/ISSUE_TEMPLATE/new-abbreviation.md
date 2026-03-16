@@ -18,9 +18,6 @@ assignees: ''
 **意味 (English):**
 
 
-**カテゴリ:**
-
-
 ---
 タイトルは新規追加なら `[NEW] 略語`、既存更新なら `[UPDATE] 略語` にしてください。
 このIssueを送信すると、GitHub Actions が自動で Pull Request を作成します。

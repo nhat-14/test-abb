@@ -1,6 +1,5 @@
 import os
 import re
-from collections import defaultdict
 from pathlib import Path
 
 HEADER = """# 略語データベース (Abbreviation Database)
@@ -15,7 +14,6 @@ HEADER = """# 略語データベース (Abbreviation Database)
 ### 略語名
 - **日本語**: 意味（日本語）
 - **English**: English Meaning
-- **カテゴリ**: カテゴリ名
 ```
 
 ---
@@ -45,7 +43,6 @@ def parse_markdown(text: str):
         abbreviation = lines[0].strip()
         meaning_ja = ""
         meaning_en = ""
-        category = ""
 
         for line in lines[1:]:
             stripped = line.strip()
@@ -53,8 +50,6 @@ def parse_markdown(text: str):
                 meaning_ja = stripped.replace("- **日本語**:", "", 1).strip()
             elif stripped.startswith("- **English**:"):
                 meaning_en = stripped.replace("- **English**:", "", 1).strip()
-            elif stripped.startswith("- **カテゴリ**:"):
-                category = stripped.replace("- **カテゴリ**:", "", 1).strip()
 
         if abbreviation and (meaning_ja or meaning_en):
             items.append(
@@ -62,7 +57,6 @@ def parse_markdown(text: str):
                     "abbreviation": abbreviation,
                     "meaningJa": meaning_ja,
                     "meaningEn": meaning_en,
-                    "category": category,
                 }
             )
 
@@ -70,22 +64,14 @@ def parse_markdown(text: str):
 
 
 def generate_markdown(items):
-    grouped = defaultdict(list)
-    for item in items:
-        grouped[item.get("category") or "未分類"].append(item)
-
     output = [HEADER]
-    for category in sorted(grouped):
-        output.append(f"## {category}\n\n")
-        for item in sorted(grouped[category], key=lambda current: current["abbreviation"].lower()):
-            output.append(
-                f"### {item['abbreviation']}\n"
-                f"- **日本語**: {item['meaningJa']}\n"
-                f"- **English**: {item['meaningEn']}\n"
-                f"- **カテゴリ**: {item.get('category') or '未分類'}\n\n"
-            )
-        output.append("---\n\n")
-
+    for item in sorted(items, key=lambda current: current["abbreviation"].lower()):
+        output.append(
+            f"### {item['abbreviation']}\n"
+            f"- **日本語**: {item['meaningJa']}\n"
+            f"- **English**: {item['meaningEn']}\n\n"
+        )
+    output.append("---\n\n")
     return "".join(output)
 
 
@@ -99,7 +85,6 @@ def main():
     original_abbreviation = extract_field(issue_body, "元の略語 (編集時のみ)") or abbreviation
     meaning_ja = extract_field(issue_body, "意味 (日本語)")
     meaning_en = extract_field(issue_body, "意味 (English)")
-    category = extract_field(issue_body, "カテゴリ")
 
     if not abbreviation or not (meaning_ja or meaning_en):
         raise SystemExit("Issue body must include abbreviation and at least one meaning")
@@ -111,15 +96,12 @@ def main():
         "abbreviation": abbreviation,
         "meaningJa": meaning_ja,
         "meaningEn": meaning_en,
-        "category": category or "未分類",
     }
 
     target_index = None
     for index, item in enumerate(items):
         if item["abbreviation"] == original_abbreviation:
             target_index = index
-            if not category:
-                updated_item["category"] = item.get("category") or "未分類"
             break
 
     action = "Add"
@@ -129,7 +111,6 @@ def main():
     else:
         duplicate_index = next((index for index, item in enumerate(items) if item["abbreviation"] == abbreviation), None)
         if duplicate_index is not None:
-            updated_item["category"] = category or items[duplicate_index].get("category") or "未分類"
             items[duplicate_index] = updated_item
             action = "Update"
         else:

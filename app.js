@@ -91,7 +91,6 @@ function convertToMarkdown(item) {
     return `### ${item.abbreviation}
 - **日本語**: ${item.meaningJa}
 - **English**: ${item.meaningEn}
-- **カテゴリ**: ${item.category}
 
 `;
 }
@@ -116,10 +115,6 @@ ${item.meaningJa}
 **意味 (English):**
 
 ${item.meaningEn}
-
-**カテゴリ:**
-
-${item.category}
 
 ---
 このIssueを作成すると、GitHub Actions が自動で Pull Request を作成します。`;
