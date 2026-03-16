@@ -2,7 +2,7 @@ name: Create PR From Abbreviation Issue
 
 on:
   issues:
-    types: [opened, edited, reopened]
+    types: [opened, edited, reopened, labeled]
 
 permissions:
   contents: write
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   issue-to-pr:
-    if: contains(github.event.issue.labels.*.name, 'enhancement')
+    if: contains(github.event.issue.labels.*.name, 'enhancement') || startsWith(github.event.issue.title, '[NEW]') || startsWith(github.event.issue.title, '[UPDATE]')
     runs-on: ubuntu-latest
 
     steps:
