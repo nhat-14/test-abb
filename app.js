@@ -244,22 +244,8 @@ function saveFormData() {
     };
 
     const issueUrl = buildIssueUrl(issueItem, originalAbbreviation, editingIndex >= 0);
-    const issueWindow = window.open(issueUrl, '_blank', 'noopener');
-
-    document.getElementById('csvOutput').innerHTML = `
-        <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ GitHub 申請ページを開きました</p>
-        <p style="margin-bottom: 15px;">開いたGitHubページで Issue を送信してください。送信後、GitHub Actions が Pull Request を自動作成します。</p>
-        <a href="${issueUrl}" 
-           target="_blank" 
-           class="btn-primary" 
-           style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
-            🔗 GitHubでIssueを開く
-        </a>
-        <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
-            ${issueWindow ? 'GitHubにログインして Issue を作成してください。' : 'ポップアップがブロックされた場合は上のリンクを開いてください。'}
-        </p>
-    `;
-    document.getElementById('saveSuccess').style.display = 'block';
+    window.open(issueUrl, '_blank', 'noopener');
+    closeModal();
 }
 
 // Initialize when DOM is ready
