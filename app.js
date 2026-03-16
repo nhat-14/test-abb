@@ -2,8 +2,6 @@
 let abbreviationsData = [];
 let filteredData = [];
 let editingIndex = -1; // Track which item is being edited
-let githubToken = localStorage.getItem('github_token') || ''; // Store token in browser
-const HOMEPAGE_DISPLAY_LIMIT = 10;
 
 // GitHub configuration
 const GITHUB_OWNER = 'nhat-14';
@@ -12,9 +10,9 @@ const FILE_PATH = 'data/abbreviations.md';
 const BRANCH = 'main';
 
 // DOM Elements - will be initialized on page load
-let searchInput, clearBtn, tableBody, totalCount, filteredCount;
+let searchInput, tableBody;
 let loading, errorDiv, noResults, addNewBtn, modal;
-let closeModalBtn, copyBtn, cancelBtn, copySuccess;
+let closeModalBtn, cancelBtn;
 
 // Load Markdown data
 async function loadData() {
@@ -35,7 +33,6 @@ async function loadData() {
         loading.style.display = 'none';
         console.log('Rendering complete');
         renderTable(abbreviationsData);
-        updateStats();
         
     } catch (error) {
         console.error('Error loading data:', error);
@@ -89,46 +86,6 @@ function parseMarkdown(text) {
     console.log('Sample item:', abbreviationsData[0]);
     
     filteredData = [...abbreviationsData];
-    populateCategoryDropdown();
-}
-
-// Populate category dropdown with unique categories
-function populateCategoryDropdown() {
-    const categorySelect = document.getElementById('categorySelect');
-    
-    if (!categorySelect) {
-        console.error('categorySelect element not found');
-        return;
-    }
-    
-    console.log('Total abbreviations:', abbreviationsData.length);
-    console.log('All categories:', abbreviationsData.map(item => item.category));
-    
-    // Get unique categories
-    const categories = [...new Set(abbreviationsData.map(item => item.category).filter(cat => cat))];
-    categories.sort();
-    
-    console.log('Found categories:', categories);
-    
-    // Clear existing options
-    categorySelect.innerHTML = '<option value="">-- カテゴリを選択 --</option>';
-    
-    // Add existing categories
-    categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category;
-        option.textContent = category;
-        categorySelect.appendChild(option);
-        console.log('Added category option:', category);
-    });
-    
-    // Add "Other" option
-    const otherOption = document.createElement('option');
-    otherOption.value = '__other__';
-    otherOption.textContent = '🆕 新しいカテゴリを追加';
-    categorySelect.appendChild(otherOption);
-    
-    console.log('Dropdown populated with', categorySelect.options.length, 'options');
 }
 
 // Convert data to Markdown format
@@ -309,7 +266,7 @@ function generateMarkdownContent() {
     return content;
 }
 
-// Render table with edit buttons
+// Render table (click any row to edit)
 function renderTable(data) {
     if (data.length === 0) {
         tableBody.innerHTML = '';
@@ -318,27 +275,17 @@ function renderTable(data) {
     }
     
     noResults.style.display = 'none';
-    
-    // Apply homepage display limit only when no search filter is active
-    const isSearchActive = searchInput && searchInput.value.trim() !== '';
-    const visibleData = isSearchActive ? data : data.slice(0, HOMEPAGE_DISPLAY_LIMIT);
-    
-    tableBody.innerHTML = visibleData.map((item, index) => `
-        <tr>
+
+    tableBody.innerHTML = data.map((item, index) => `
+        <tr class="editable-row" data-index="${index}" title="クリックして編集">
             <td>${escapeHtml(item.abbreviation)}</td>
             <td>${escapeHtml(item.meaningJa)}</td>
-            <td>${escapeHtml(item.meaningEn)}</td>
-            <td>${item.category ? `<span class="category-badge">${escapeHtml(item.category)}</span>` : ''}</td>
-            <td class="edit-cell">
-                <button class="btn-edit" data-index="${index}" title="編集">✏️</button>
-            </td>
         </tr>
     `).join('');
-    
-    // Add event listeners to edit buttons
-    document.querySelectorAll('.btn-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            const index = parseInt(this.getAttribute('data-index'));
+
+    document.querySelectorAll('.editable-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const index = parseInt(this.getAttribute('data-index'), 10);
             editAbbreviation(index);
         });
     });
@@ -367,26 +314,6 @@ function filterData() {
     }
     
     renderTable(filteredData);
-    updateStats();
-    clearBtn.classList.toggle('visible', searchTerm !== '');
-}
-
-// Update statistics
-function updateStats() {
-    totalCount.textContent = `全体: ${abbreviationsData.length}件`;
-    
-    if (filteredData.length !== abbreviationsData.length) {
-        filteredCount.textContent = `検索結果: ${filteredData.length}件`;
-        filteredCount.style.display = 'inline';
-    } else {
-        filteredCount.style.display = 'none';
-    }
-}
-
-// Clear search
-function clearSearch() {
-    searchInput.value = '';
-    filterData();
 }
 
 // Edit abbreviation - pre-fill modal with existing data
@@ -397,28 +324,6 @@ function editAbbreviation(index) {
     // Pre-fill the form
     document.getElementById('abbr').value = item.abbreviation;
     document.getElementById('meaningJa').value = item.meaningJa;
-    document.getElementById('meaningEn').value = item.meaningEn;
-    
-    // Set category dropdown
-    const categorySelect = document.getElementById('categorySelect');
-    const customCategoryGroup = document.getElementById('customCategoryGroup');
-    
-    if (item.category) {
-        // Check if category exists in dropdown
-        const optionExists = Array.from(categorySelect.options).some(opt => opt.value === item.category);
-        if (optionExists) {
-            categorySelect.value = item.category;
-            customCategoryGroup.style.display = 'none';
-        } else {
-            // Category not in list, use custom
-            categorySelect.value = '__other__';
-            customCategoryGroup.style.display = 'block';
-            document.getElementById('customCategory').value = item.category;
-        }
-    } else {
-        categorySelect.value = '';
-        customCategoryGroup.style.display = 'none';
-    }
     
     // Update modal title
     document.querySelector('.modal-content h2').textContent = '略語を編集';
@@ -434,8 +339,6 @@ function openModal() {
     document.querySelector('.modal-content h2').textContent = '新しい略語を追加';
     modal.style.display = 'block';
     document.getElementById('addForm').reset();
-    document.getElementById('customCategoryGroup').style.display = 'none';
-    document.getElementById('categorySelect').value = '';
     document.getElementById('saveSuccess').style.display = 'none';
 }
 
@@ -448,14 +351,14 @@ function closeModal() {
 function saveFormData() {
     const abbr = document.getElementById('abbr').value.trim();
     const meaningJa = document.getElementById('meaningJa').value.trim();
-    const meaningEn = document.getElementById('meaningEn').value.trim();
-    
-    const categorySelect = document.getElementById('categorySelect');
+    let meaningEn = '';
     let category = '';
-    if (categorySelect.value === '__other__') {
-        category = document.getElementById('customCategory').value.trim();
-    } else {
-        category = categorySelect.value;
+
+    // Keep existing optional fields when editing, because the simplified form no longer exposes them.
+    if (editingIndex >= 0) {
+        const existingItem = filteredData[editingIndex];
+        meaningEn = existingItem.meaningEn || '';
+        category = existingItem.category || '';
     }
     
     if (!abbr || !meaningJa) {
@@ -485,9 +388,7 @@ function saveFormData() {
     
     // Update filtered data
     filteredData = [...abbreviationsData];
-    populateCategoryDropdown();
     renderTable(filteredData);
-    updateStats();
     
     // Show loading message
     document.getElementById('csvOutput').innerHTML = `
@@ -541,10 +442,7 @@ function saveFormData() {
 document.addEventListener('DOMContentLoaded', function() {
     // Get DOM elements
     searchInput = document.getElementById('searchInput');
-    clearBtn = document.getElementById('clearBtn');
     tableBody = document.getElementById('tableBody');
-    totalCount = document.getElementById('totalCount');
-    filteredCount = document.getElementById('filteredCount');
     loading = document.getElementById('loading');
     errorDiv = document.getElementById('error');
     noResults = document.getElementById('noResults');
@@ -554,48 +452,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveBtn = document.getElementById('saveBtn');
     cancelBtn = document.getElementById('cancelBtn');
     
-    // Set up category dropdown change listener
-    const categorySelect = document.getElementById('categorySelect');
-    const customCategoryGroup = document.getElementById('customCategoryGroup');
-    
-    categorySelect.addEventListener('change', function() {
-        if (this.value === '__other__') {
-            customCategoryGroup.style.display = 'block';
-            document.getElementById('customCategory').focus();
-        } else {
-            customCategoryGroup.style.display = 'none';
-            document.getElementById('customCategory').value = '';
-        }
-    });
-    
     // Set up event listeners
     searchInput.addEventListener('input', filterData);
-    clearBtn.addEventListener('click', clearSearch);
     addNewBtn.addEventListener('click', openModal);
     closeModalBtn.addEventListener('click', closeModal);
     saveBtn.addEventListener('click', saveFormData);
     cancelBtn.addEventListener('click', closeModal);
-    
-    // Token management button
-    const tokenBtn = document.getElementById('tokenBtn');
-    if (tokenBtn) {
-        tokenBtn.addEventListener('click', function() {
-            const token = localStorage.getItem('github_actions_token');
-            
-            if (token) {
-                if (confirm('現在のトークン: ' + token.substring(0, 10) + '...\n\nトークンを削除して新しいトークンを入力しますか？')) {
-                    localStorage.removeItem('github_actions_token');
-                    alert('トークンが削除されました。次回保存時に新しいトークンを入力してください。');
-                }
-            } else {
-                const newToken = prompt('GitHub Personal Access Token を入力してください:\n\n1. https://github.com/settings/tokens/new にアクセス\n2. スコープを選択:\n   ✅ repo (全権限)\n3. トークンを生成してコピー');
-                if (newToken) {
-                    localStorage.setItem('github_actions_token', newToken);
-                    alert('✅ トークンが保存されました！');
-                }
-            }
-        });
-    }
     
     // Close modal when clicking outside
     window.addEventListener('click', function(event) {

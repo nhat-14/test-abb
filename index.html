@@ -21,17 +21,11 @@
                     placeholder="略語または意味を検索..."
                     autocomplete="off"
                 >
-                <button id="clearBtn" class="clear-btn" title="クリア">✕</button>
-            </div>
-            <div class="stats">
-                <span id="totalCount">読込中...</span>
-                <span id="filteredCount"></span>
             </div>
         </div>
 
         <div class="actions">
             <button id="addNewBtn" class="btn-primary">➕ 新しい略語を追加</button>
-            <button id="tokenBtn" class="btn-secondary" style="margin-left: 10px;">🔑 GitHubトークン設定</button>
         </div>
 
         <div id="loading" class="loading">データを読み込んでいます...</div>
@@ -43,9 +37,6 @@
                     <tr>
                         <th>略語</th>
                         <th>意味 (日本語)</th>
-                        <th>English Meaning</th>
-                        <th>カテゴリ</th>
-                        <th>編集</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -59,9 +50,7 @@
         </div>
 
         <footer>
-            <p>💡 新しい略語を追加・編集するには、上の「➕ 新しい略語を追加」ボタンをクリックしてください</p>
-            <p>または <a href="CONTRIBUTING.md" target="_blank">CONTRIBUTING.md</a> を参照するか、<a href="https://github.com/YOUR_ORG/me-ryakushou/issues/new" target="_blank">GitHub Issue</a> を作成してください</p>
-            <p style="font-size: 0.85em; color: #64748b; margin-top: 10px;">データ形式: Markdown (.md) | 編集は即座に反映されます</p>
+            <p>行をクリックして編集、または「➕ 新しい略語を追加」で新規登録できます。</p>
         </footer>
     </div>
 
@@ -80,23 +69,6 @@
                 <div class="form-group">
                     <label for="meaningJa">意味 (日本語) *</label>
                     <input type="text" id="meaningJa" required placeholder="日本語の意味を入力">
-                </div>
-                
-                <div class="form-group">
-                    <label for="meaningEn">意味 (English)</label>
-                    <input type="text" id="meaningEn" placeholder="English meaning">
-                </div>
-                
-                <div class="form-group">
-                    <label for="categorySelect">カテゴリ</label>
-                    <select id="categorySelect">
-                        <option value="">-- カテゴリを選択 --</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="customCategoryGroup" style="display: none;">
-                    <label for="customCategory">新しいカテゴリ</label>
-                    <input type="text" id="customCategory" placeholder="新しいカテゴリを入力">
                 </div>
 
                 <div class="form-actions">
