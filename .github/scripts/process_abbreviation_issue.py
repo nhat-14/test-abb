@@ -24,8 +24,12 @@ DATA_FILE = Path("data/abbreviations.md")
 
 
 def extract_field(body: str, label: str) -> str:
-    pattern = rf"\*\*{re.escape(label)}\*\*:\s*(.*?)(?=\n\*\*[^*]+\*\*:|\n---|\Z)"
-    match = re.search(pattern, body, re.DOTALL)
+    normalized_body = body.replace("\r\n", "\n")
+    pattern = (
+        rf"\*\*{re.escape(label)}\s*:?\s*\*\*\s*:?\s*"
+        rf"(.*?)(?=\n\s*\*\*[^*]+\s*:?\s*\*\*\s*:?|\n---|\Z)"
+    )
+    match = re.search(pattern, normalized_body, re.DOTALL)
     if not match:
         return ""
     return match.group(1).strip()
