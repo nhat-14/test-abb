@@ -52,25 +52,28 @@ https://YOUR_ORG.github.io/me-ryakushou/
 
 ## 📝 新しい略語の追加方法
 
-### 方法1: Web アプリから直接 (推奨) 🎯
+### 方法1: Web アプリから GitHub 申請を作成 (推奨) 🎯
 
 1. アプリを開く
 2. 「➕ 新しい略語を追加」ボタンをクリック
 3. フォームに情報を入力
-4. 「💾 保存してコピー」をクリック
-5. GitHubリンクから直接編集してコミット
+4. 「🔗 GitHubで申請」をクリック
+5. 開いた GitHub ページで Issue を送信
+6. GitHub Actions が自動で Pull Request を作成
 
-### 方法2: GitHub Issue を使用
+### 方法2: GitHub Issue を手動で使用
 
-1. [新しい Issue を作成](https://github.com/YOUR_ORG/me-ryakushou/issues/new)
-2. 以下の情報を記載:
+1. [新しい Issue を作成](https://github.com/nhat-14/test-abb/issues/new?template=new-abbreviation.md)
+2. タイトルを入力:
    ```
-   略語: API
-   日本語の意味: アプリケーション・プログラミング・インターフェース
-   英語の意味: Application Programming Interface
-   カテゴリ: IT
+   [NEW] API
    ```
-3. Issue を提出
+   編集の場合:
+   ```
+   [UPDATE] API
+   ```
+3. フォームを入力して Issue を送信
+4. GitHub Actions が自動で Pull Request を作成
 
 ### 方法3: Pull Request を使用
 
@@ -87,10 +90,11 @@ https://YOUR_ORG.github.io/me-ryakushou/
 
 ## ✏️ 既存の略語の編集方法
 
-1. アプリで編集したい略語の行にある「✏️」ボタンをクリック
+1. アプリで編集したい略語の行をクリック
 2. フォームで情報を修正
-3. 「💾 保存してコピー」をクリック
-4. GitHubリンクから全内容を置き換えてコミット
+3. 「🔗 GitHubで申請」をクリック
+4. 開いた GitHub ページで Issue を送信
+5. GitHub Actions が更新用 Pull Request を自動で作成
 
 ## 🗂 ファイル構成
 

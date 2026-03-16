@@ -6,35 +6,11 @@ let editingIndex = -1; // Track which item is being edited
 // GitHub configuration
 const GITHUB_OWNER = 'nhat-14';
 const GITHUB_REPO = 'test-abb';
-const FILE_PATH = 'data/abbreviations.md';
-const BRANCH = 'main';
-const DEFAULT_COMMIT_API_URL = '/api/commit';
-const COMMIT_API_URL_STORAGE_KEY = 'commit_api_url';
 
 // DOM Elements - will be initialized on page load
 let searchInput, tableBody;
 let loading, errorDiv, noResults, addNewBtn, modal;
 let closeModalBtn, cancelBtn;
-
-function getCommitApiUrl() {
-    return localStorage.getItem(COMMIT_API_URL_STORAGE_KEY) || DEFAULT_COMMIT_API_URL;
-}
-
-function promptForCommitApiUrl(currentUrl) {
-    const customApiUrl = prompt(
-        '保存APIに接続できませんでした。\n\n' +
-        'VercelなどにデプロイしたAPI URLを入力してください。\n' +
-        '例: https://your-project.vercel.app/api/commit\n\n' +
-        '入力したURLはこのブラウザに保存され、次回から自動使用されます。',
-        currentUrl === DEFAULT_COMMIT_API_URL ? '' : currentUrl
-    );
-
-    if (!customApiUrl || !customApiUrl.trim()) {
-        return null;
-    }
-
-    return customApiUrl.trim();
-}
 
 // Load Markdown data
 async function loadData() {
@@ -120,93 +96,42 @@ function convertToMarkdown(item) {
 `;
 }
 
-// Save through server-side API so end users do not need personal access tokens.
-async function commitViaServer(content, commitMessage, retryCount = 0) {
-    const commitApiUrl = getCommitApiUrl();
-
-    const response = await fetch(commitApiUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            content,
-            message: commitMessage
-        })
-    });
-
-    let responseData = {};
-    try {
-        responseData = await response.json();
-    } catch (error) {
-        console.warn('Failed to parse API response JSON:', error);
-    }
-
-    if ((response.status === 404 || response.status === 405) && retryCount < 2) {
-        const customApiUrl = promptForCommitApiUrl(commitApiUrl);
-        if (customApiUrl) {
-            localStorage.setItem(COMMIT_API_URL_STORAGE_KEY, customApiUrl);
-            return commitViaServer(content, commitMessage, retryCount + 1);
-        }
-
-        if (commitApiUrl !== DEFAULT_COMMIT_API_URL) {
-            localStorage.removeItem(COMMIT_API_URL_STORAGE_KEY);
-        }
-    }
-
-    if (!response.ok || !responseData.success) {
-        if (responseData.error === 'GitHub token not configured') {
-            throw new Error('保存API側でGITHUB_TOKENが未設定です。管理者がVercel/Netlifyの環境変数を設定してください。');
-        }
-
-        const details = responseData.details ? ` (${responseData.details})` : '';
-        throw new Error(responseData.error || `保存に失敗しました: ${response.status}${details}`);
-    }
-
-    return responseData;
+function buildIssueTitle(abbreviation, isEdit) {
+    return `${isEdit ? '[UPDATE]' : '[NEW]'} ${abbreviation}`;
 }
 
-// Generate full markdown content
-function generateMarkdownContent() {
-    let content = `# 略語データベース (Abbreviation Database)
+function buildIssueBody(item, originalAbbreviation) {
+    return `**略語:**
 
-このファイルを編集して、新しい略語を追加したり既存の略語を修正したりできます。
+${item.abbreviation}
 
-## データ形式
+**元の略語 (編集時のみ):**
 
-各略語は以下の形式で記述してください：
+${originalAbbreviation}
 
-\`\`\`
-### 略語名
-- **日本語**: 意味（日本語）
-- **English**: English Meaning
-- **カテゴリ**: カテゴリ名
-\`\`\`
+**意味 (日本語):**
+
+${item.meaningJa}
+
+**意味 (English):**
+
+${item.meaningEn}
+
+**カテゴリ:**
+
+${item.category}
 
 ---
+このIssueを作成すると、GitHub Actions が自動で Pull Request を作成します。`;
+}
 
-`;
-    
-    // Group by category
-    const categories = {};
-    abbreviationsData.forEach(item => {
-        const cat = item.category || '未分類';
-        if (!categories[cat]) {
-            categories[cat] = [];
-        }
-        categories[cat].push(item);
-    });
-    
-    // Generate content for each category
-    Object.keys(categories).sort().forEach(category => {
-        content += `## ${category}\n\n`;
-        categories[category].forEach(item => {
-            content += convertToMarkdown(item);
-        });
-        content += '---\n\n';
-    });
-    
-    return content;
+function buildIssueUrl(item, originalAbbreviation, isEdit) {
+    const issueUrl = new URL(`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues/new`);
+    issueUrl.searchParams.set('template', 'new-abbreviation.md');
+    issueUrl.searchParams.set('labels', 'new-abbreviation');
+    issueUrl.searchParams.set('title', buildIssueTitle(item.abbreviation, isEdit));
+    issueUrl.searchParams.set('body', buildIssueBody(item, originalAbbreviation));
+    return issueUrl.toString();
 }
 
 // Render table (click any row to edit)
@@ -298,91 +223,43 @@ function saveFormData() {
     const meaningJa = document.getElementById('meaningJa').value.trim();
     const meaningEn = document.getElementById('meaningEn').value.trim();
     let category = '';
+    let originalAbbreviation = '';
 
-    // Keep category when editing because simplified form does not expose category.
     if (editingIndex >= 0) {
         const existingItem = filteredData[editingIndex];
         category = existingItem.category || '';
+        originalAbbreviation = existingItem.abbreviation || '';
     }
-    
+
     if (!abbr || (!meaningJa && !meaningEn)) {
         alert('略語は必須です。意味は日本語または英語のどちらかを入力してください。');
         return;
     }
-    
-    const newItem = {
+
+    const issueItem = {
         abbreviation: abbr,
-        meaningJa: meaningJa,
-        meaningEn: meaningEn,
-        category: category
+        meaningJa,
+        meaningEn,
+        category
     };
-    
-    // Update or add to data
-    if (editingIndex >= 0) {
-        // Edit existing entry
-        const actualIndex = abbreviationsData.indexOf(filteredData[editingIndex]);
-        abbreviationsData[actualIndex] = newItem;
-    } else {
-        // Add new entry
-        abbreviationsData.push(newItem);
-    }
-    
-    // Regenerate markdown
-    const markdownContent = generateMarkdownContent();
-    
-    // Update filtered data
-    filteredData = [...abbreviationsData];
-    renderTable(filteredData);
-    
-    // Show loading message
+
+    const issueUrl = buildIssueUrl(issueItem, originalAbbreviation, editingIndex >= 0);
+    const issueWindow = window.open(issueUrl, '_blank', 'noopener');
+
     document.getElementById('csvOutput').innerHTML = `
-        <p style="color: #3b82f6; font-size: 1.1em;">⏳ 保存中...</p>
+        <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ GitHub 申請ページを開きました</p>
+        <p style="margin-bottom: 15px;">開いたGitHubページで Issue を送信してください。送信後、GitHub Actions が Pull Request を自動作成します。</p>
+        <a href="${issueUrl}" 
+           target="_blank" 
+           class="btn-primary" 
+           style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
+            🔗 GitHubでIssueを開く
+        </a>
+        <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
+            ${issueWindow ? 'GitHubにログインして Issue を作成してください。' : 'ポップアップがブロックされた場合は上のリンクを開いてください。'}
+        </p>
     `;
     document.getElementById('saveSuccess').style.display = 'block';
-    
-    // Commit to GitHub
-    const commitMessage = editingIndex >= 0 
-        ? `Update abbreviation: ${abbr}`
-        : `Add new abbreviation: ${abbr}`;
-    
-    commitViaServer(markdownContent, commitMessage)
-        .then(result => {
-            const commitUrl = result.commit?.html_url;
-            document.getElementById('csvOutput').innerHTML = `
-                <p style="color: #10b981; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">✅ 保存しました！</p>
-                <p style="margin-bottom: 15px;">更新内容はGitHubに反映されました。</p>
-                ${commitUrl ? `
-                <a href="${commitUrl}" 
-                   target="_blank" 
-                   class="btn-primary" 
-                   style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-bottom: 15px;">
-                    🔍 コミットを確認
-                </a>
-                ` : ''}
-                <p style="font-size: 0.9em; color: #64748b; margin-top: 10px;">
-                    最新データを表示するにはページを再読み込みしてください (F5)
-                </p>
-            `;
-            
-            // Keep modal open so user can check result
-        })
-        .catch(error => {
-            console.error('Server commit failed:', error);
-            document.getElementById('csvOutput').innerHTML = `
-                <p style="color: #ef4444; font-weight: bold; font-size: 1.1em; margin-bottom: 15px;">❌ エラーが発生しました</p>
-                <p style="margin-bottom: 15px;">${error.message}</p>
-                <p style="font-size: 0.9em; color: #64748b;">手動で編集するには:</p>
-                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/edit/${BRANCH}/${FILE_PATH}" 
-                   target="_blank" 
-                   class="btn-primary" 
-                   style="display: inline-block; padding: 12px 24px; text-decoration: none; margin-top: 10px;">
-                    📝 GitHubで手動編集
-                </a>
-            `;
-            
-            // Copy to clipboard as fallback
-            navigator.clipboard.writeText(markdownContent).catch(() => {});
-        });
 }
 
 // Initialize when DOM is ready
