@@ -26,7 +26,7 @@ DATA_FILE = Path("data/abbreviations.md")
 def extract_field(body: str, label: str) -> str:
     normalized_body = body.replace("\r\n", "\n")
     pattern = (
-        rf"\*\*{re.escape(label)}\s*:?\s*\*\*\s*:?\s*"
+        rf"\*\*{re.escape(label)}\s*:?\s*\*\*\s*:?[ \t]*"
         rf"(.*?)(?=\n\s*\*\*[^*]+\s*:?\s*\*\*\s*:?|\n---|\Z)"
     )
     match = re.search(pattern, normalized_body, re.DOTALL)
@@ -47,6 +47,9 @@ def parse_markdown(text: str):
         abbreviation = lines[0].strip()
         meaning_ja = ""
         meaning_en = ""
+
+        if abbreviation == "略語名":
+            continue
 
         for line in lines[1:]:
             stripped = line.strip()

@@ -87,9 +87,7 @@
 - **English**: Key Performance Indicator
 
 ### MELCO
-- **日本語**: **意味 (English):**
-
-Mitsubishi Electric Corporation
+- **日本語**: 
 - **English**: Mitsubishi Electric Corporation
 
 ### ML
@@ -143,10 +141,6 @@ Mitsubishi Electric Corporation
 ### XML
 - **日本語**: 拡張マークアップ言語
 - **English**: Extensible Markup Language
-
-### 略語名
-- **日本語**: 意味（日本語）
-- **English**: English Meaning
 
 ---
 

@@ -56,6 +56,8 @@ function parseMarkdown(text) {
         let meaningJa = '';
         let meaningEn = '';
         let category = '';
+
+        if (abbreviation === '略語名') continue;
         
         // Parse bullet points
         for (let i = 1; i < lines.length; i++) {
